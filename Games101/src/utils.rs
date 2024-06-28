@@ -2,13 +2,15 @@
 use std::os::raw::c_void;
 use nalgebra::{Matrix3, Matrix4, Vector3, Vector4};
 use opencv::prelude::*;
-use opencv::core::{Mat, MatTraitConst};
+use opencv::core::{sqrt, Mat, MatTraitConst};
 use opencv::imgproc::{COLOR_RGB2BGR, cvt_color};
 use crate::shader::{FragmentShaderPayload, VertexShaderPayload};
 use crate::texture::Texture;
 use crate::triangle::Triangle;
 
 pub type V3f = Vector3<f64>;
+pub type V4f = Vector4<f64>;
+pub type M3f = Matrix3<f64>;
 pub type M4f = Matrix4<f64>;
 
 pub(crate) fn get_view_matrix(eye_pos: V3f) -> M4f {
@@ -32,6 +34,31 @@ pub(crate) fn get_model_matrix(rotation_angle: f64,scale: f64) -> M4f {
     model[(0, 1)] = -model[(1, 0)];
 
     model*scale
+}
+
+pub(crate) fn get_rotation_matrix(rotation_angle: f64) -> M4f {
+    let mut axis: V3f = V3f::new(1.0, 1.0, 1.0).normalize();
+    let id: M3f = Matrix3::identity();
+    let rad = rotation_angle.to_radians();
+    let mut mat: M3f = Matrix3::zeros();
+    let mut result: M4f = Matrix4::identity();
+
+    mat[(0, 1)] = -axis[2];
+    mat[(0, 2)] = axis[1];
+    mat[(1, 0)] = axis[2];
+    mat[(1, 2)] = -axis[0];
+    mat[(2, 0)] = -axis[1];
+    mat[(2, 1)] = axis[0];
+
+    mat = rad.cos()*id + (1.0-rad.cos())*axis*axis.transpose() + rad.sin()*mat;
+
+    for i in 0..3 {
+        for j in 0..3 {
+            result[(i, j)] = mat[(i, j)];
+        }
+    }
+
+    return result;
 }
 
 pub(crate) fn get_model_matrix_lab3(rotation_angle: f64) -> M4f {
