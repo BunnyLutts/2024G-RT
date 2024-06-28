@@ -1,4 +1,4 @@
-// #![allow(warnings)]
+#![allow(warnings)]
 
 mod triangle;
 pub mod rasterizer1;

@@ -1,6 +1,7 @@
 #![allow(warnings)]
 use std::os::raw::c_void;
 use nalgebra::{Matrix3, Matrix4, Vector3, Vector4};
+use opencv::prelude::*;
 use opencv::core::{Mat, MatTraitConst};
 use opencv::imgproc::{COLOR_RGB2BGR, cvt_color};
 use crate::shader::{FragmentShaderPayload, VertexShaderPayload};
@@ -14,6 +15,10 @@ pub(crate) fn get_view_matrix(eye_pos: V3f) -> M4f {
     let mut view: Matrix4<f64> = Matrix4::identity();
     /*  implement your code here  */
 
+    for i in 0..3 {
+        view[(i, 3)] = -eye_pos[i];
+    }
+
     view
 }
 
@@ -21,7 +26,12 @@ pub(crate) fn get_model_matrix(rotation_angle: f64,scale: f64) -> M4f {
     let mut model: Matrix4<f64> = Matrix4::identity();
     /*  implement your code here  */
 
-    model
+    model[(0, 0)] = rotation_angle.to_radians().cos();
+    model[(1, 1)] = model[(0, 0)];
+    model[(1, 0)] = rotation_angle.to_radians().sin();
+    model[(0, 1)] = -model[(1, 0)];
+
+    model*scale
 }
 
 pub(crate) fn get_model_matrix_lab3(rotation_angle: f64) -> M4f {
@@ -40,22 +50,63 @@ pub(crate) fn get_model_matrix_lab3(rotation_angle: f64) -> M4f {
 
 pub(crate) fn get_projection_matrix(eye_fov: f64, aspect_ratio: f64, z_near: f64, z_far: f64) -> M4f {
     let mut projection: Matrix4<f64> = Matrix4::identity();
+    let mut trans: M4f = Matrix4::identity();
     let mut scale: M4f = Matrix4::identity();
     /*  implement your code here  */
 
-    projection * scale
+    let n = z_near;
+    let f = z_far;
+    let t = (eye_fov.to_radians()/2.0).tan() * n.abs();
+    let r = aspect_ratio * t;
+    let l = -r;
+    let b = -t;
+
+    projection[(0, 0)] = n;
+    projection[(1, 1)] = n;
+    projection[(2, 2)] = n+f;
+    projection[(2, 3)] = - n * f;
+    projection[(3, 2)] = -1.0;
+    projection[(3, 3)] = 0.0;
+
+    trans[(0, 0)] = 2.0/(r-l);
+    trans[(1, 1)] = 2.0/(t-b);
+    trans[(2, 2)] = 2.0/(n-f);
+
+    scale[(0, 3)] = -(r+l)/2.0;
+    scale[(1, 3)] = -(t+b)/2.0;
+    scale[(2, 3)] = -(n+f)/2.0;
+
+    trans * scale * projection
 }
+
+// pub(crate) fn frame_buffer2cv_mat(frame_buffer: &Vec<V3f>) -> Mat {
+//     let mut image = unsafe {
+//         Mat::new_rows_cols_with_data_unsafe(
+//             700, 700,
+//             opencv::core::CV_64FC3,
+//             frame_buffer.as_ptr() as *mut c_void,
+//             opencv::core::Mat_AUTO_STEP,
+//         ).unwrap()
+//     };
+//     let mut img = Mat::copy(&image).unwrap() ;
+//     image.convert_to(&mut img, opencv::core::CV_8UC3, 1.0, 1.0).expect("panic message");
+//     cvt_color(&img, &mut image, COLOR_RGB2BGR, 0).unwrap();
+//     image
+//     // let mut image = Mat::default();
+//     // image
+// }
 
 pub(crate) fn frame_buffer2cv_mat(frame_buffer: &Vec<V3f>) -> Mat {
     let mut image = unsafe {
-        Mat::new_rows_cols_with_data(
+        Mat::new_rows_cols_with_data_unsafe(
             700, 700,
             opencv::core::CV_64FC3,
             frame_buffer.as_ptr() as *mut c_void,
             opencv::core::Mat_AUTO_STEP,
         ).unwrap()
     };
-    let mut img = Mat::copy(&image).unwrap();
+
+    let mut img = image.clone();
     image.convert_to(&mut img, opencv::core::CV_8UC3, 1.0, 1.0).expect("panic message");
     cvt_color(&img, &mut image, COLOR_RGB2BGR, 0).unwrap();
     image

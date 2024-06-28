@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 nalgebra = "0.32.1"
-opencv = "0.77.0"
+opencv = "0.92.0"
 tobj = "3.2.4"
 clap = "3"  # 命令行参数
 
