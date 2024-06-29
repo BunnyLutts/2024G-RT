@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use rand::Rng;
+use rand::distributions::Uniform;
 
 use nalgebra::{Matrix4, Vector3, Vector4};
 use crate::triangle::Triangle;
@@ -24,8 +26,11 @@ pub struct Rasterizer {
     pos_buf: HashMap<usize, Vec<Vector3<f64>>>,
     ind_buf: HashMap<usize, Vec<Vector3<usize>>>,
     col_buf: HashMap<usize, Vec<Vector3<f64>>>,
+    rng: rand::rngs::ThreadRng,
 
     frame_buf: Vec<Vector3<f64>>,
+    frame_now_buf: Vec<Vector3<f64>>,
+    sample_buf: Vec<Vector3<f64>>,
     depth_buf: Vec<f64>,
     /*  You may need to uncomment here to implement the MSAA method  */
     // frame_sample: Vec<Vector3<f64>>,
@@ -33,6 +38,7 @@ pub struct Rasterizer {
     width: u64,
     height: u64,
     next_id: usize,
+    cnt: u64,
 }
 
 #[derive(Clone, Copy)]
@@ -50,7 +56,11 @@ impl Rasterizer {
         r.width = w;
         r.height = h;
         r.frame_buf.resize((w * h) as usize, Vector3::zeros());
+        r.frame_now_buf.resize((w*h) as usize, Vector3::zeros());
+        r.sample_buf.resize((w * h) as usize, Vector3::zeros());
         r.depth_buf.resize((w * h) as usize, 0.0);
+        r.rng = rand::thread_rng();
+        r.cnt = 0;
         r
     }
 
@@ -67,12 +77,25 @@ impl Rasterizer {
         match buff {
             Buffer::Color => {
                 self.frame_buf.fill(Vector3::new(0.0, 0.0, 0.0));
+                self.frame_now_buf.fill(Vector3::new(0.0, 0.0, 0.0));
+                self.cnt = 1;
             }
             Buffer::Depth => {
                 self.depth_buf.fill(f64::MAX);
             }
             Buffer::Both => {
-                self.frame_buf.fill(Vector3::new(0.0, 0.0, 0.0));
+                // self.frame_buf.fill(Vector3::new(0.0, 0.0, 0.0));
+                for i in 0..self.height {
+                    for j in 0..self.width {
+                        let ind = self.get_index(j as usize, i as usize);
+                        let x = j as f64 + self.rng.gen_range(0.0..1.0);
+                        let y = i as f64 + self.rng.gen_range(0.0..1.0);
+                        self.sample_buf[ind] = Vector3::new(x, y, 0.0);
+                        self.frame_buf[ind] *= self.cnt as f64 / (self.cnt as f64 + 1.0);
+                    }
+                }
+                self.frame_now_buf.fill(Vector3::new(0.0, 0.0, 0.0));
+                self.cnt += 1;
                 self.depth_buf.fill(f64::MAX);
             }
         }
@@ -160,14 +183,15 @@ impl Rasterizer {
         /*  implement your code here  */
         for i in 0..self.height {
             for j in 0..self.width {
-                let x = j as f64 + 0.5;
-                let y = i as f64 + 0.5;
+                let ind = self.get_index(j as usize, i as usize);
+                let x = self.sample_buf[ind].x;
+                let y = self.sample_buf[ind].y;
                 let vertex = t.get_vertex();
                 if inside_triangle(x, y, &vertex) {
                     let depth = -interplot_triangle(x, y, &vertex);
-                    let ind = self.get_index(j as usize, i as usize);
                     if depth < self.depth_buf[ind] {
-                        self.frame_buf[ind] = 255.0*t.color[0];
+                        self.frame_buf[ind] += (255.0*t.color[0]-self.frame_now_buf[ind])/(self.cnt as f64);
+                        self.frame_now_buf[ind] = 255.0*t.color[0];
                         self.depth_buf[ind] = depth;
                     }
                 }
