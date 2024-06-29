@@ -26,6 +26,7 @@ pub struct Rasterizer {
     col_buf: HashMap<usize, Vec<Vector3<f64>>>,
 
     frame_buf: Vec<Vector3<f64>>,
+    frame_more_buf: Vec<Vector3<f64>>,
     depth_buf: Vec<f64>,
     /*  You may need to uncomment here to implement the MSAA method  */
     // frame_sample: Vec<Vector3<f64>>,
@@ -50,12 +51,17 @@ impl Rasterizer {
         r.width = w;
         r.height = h;
         r.frame_buf.resize((w * h) as usize, Vector3::zeros());
-        r.depth_buf.resize((w * h) as usize, 0.0);
+        r.frame_more_buf.resize((2*w*2*h) as usize, Vector3::zeros());
+        r.depth_buf.resize((2*w * 2*h) as usize, 0.0);
         r
     }
 
     fn get_index(&self, x: usize, y: usize) -> usize {
         ((self.height - 1 - y as u64) * self.width + x as u64) as usize
+    }
+
+    fn get_index_more(&self, x: usize, y: usize) -> usize {
+        ((self.height*2 -1 - y as u64) * self.width*2 + x as u64) as usize
     }
 
     fn set_pixel(&mut self, point: &Vector3<f64>, color: &Vector3<f64>) {
@@ -67,12 +73,14 @@ impl Rasterizer {
         match buff {
             Buffer::Color => {
                 self.frame_buf.fill(Vector3::new(0.0, 0.0, 0.0));
+                self.frame_more_buf.fill(Vector3::new(0.0, 0.0, 0.0));
             }
             Buffer::Depth => {
                 self.depth_buf.fill(f64::MAX);
             }
             Buffer::Both => {
                 self.frame_buf.fill(Vector3::new(0.0, 0.0, 0.0));
+                self.frame_more_buf.fill(Vector3::new(0.0, 0.0, 0.0));
                 self.depth_buf.fill(f64::MAX);
             }
         }
@@ -158,17 +166,19 @@ impl Rasterizer {
 
     pub fn rasterize_triangle(&mut self, t: &Triangle) {
         /*  implement your code here  */
-        for i in 0..self.height {
-            for j in 0..self.width {
-                let x = j as f64 + 0.5;
-                let y = i as f64 + 0.5;
+        for i in 0..2*self.height {
+            for j in 0..2*self.width {
+                let x = (j as f64 + 0.5)/2.0;
+                let y = (i as f64 + 0.5)/2.0;
                 let vertex = t.get_vertex();
                 if inside_triangle(x, y, &vertex) {
                     let depth = -interplot_triangle(x, y, &vertex);
-                    let ind = self.get_index(j as usize, i as usize);
-                    if depth < self.depth_buf[ind] {
-                        self.frame_buf[ind] = 255.0*t.color[0];
-                        self.depth_buf[ind] = depth;
+                    let ind_more = self.get_index_more(j as usize, i as usize);
+                    if depth < self.depth_buf[ind_more] {
+                        let ind = self.get_index((j/2) as usize, (i/2) as usize);
+                        self.frame_buf[ind] += 0.25*(255.0*t.color[0]-self.frame_more_buf[ind_more]);
+                        self.frame_more_buf[ind_more] = 255.0*t.color[0];
+                        self.depth_buf[ind_more] = depth;
                     }
                 }
             }
