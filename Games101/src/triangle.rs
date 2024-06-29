@@ -36,6 +36,7 @@ impl Triangle {
             exit(-1);
         }
         self.color[ind] = Vector3::new(r / 255.0, g / 255.0, b / 255.0);
+        // self.color[ind] = Vector3::new(r, g, b);
     }
     pub fn set_tex_coord(&mut self, ind: usize, s: f64, t: f64) {
         self.tex_coords[ind] = Vector2::new(s, t);
@@ -44,7 +45,16 @@ impl Triangle {
         let v: Vec<Vector4<f64>> = self.v.iter().map(|vec| Vector4::new(vec[0], vec[1], vec[2], 1.0)).collect();
         [v[0], v[1], v[2]]
     }
+
     pub fn get_color(&self) -> Vector3<f64> {
         self.color[0] * 255.0 // only one color per triangle.
+    }
+
+    pub fn get_vertex(&self) -> [Vector3<f64>; 3] {
+        let mut result = [Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0)];
+        for i in 0..3 {
+            result[i] = Vector3::new(self.v[i][0]/self.v[i][3], self.v[i][1]/self.v[i][3], self.v[i][2]/self.v[i][3]);
+        }
+        result
     }
 }

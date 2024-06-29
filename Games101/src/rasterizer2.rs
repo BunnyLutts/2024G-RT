@@ -158,7 +158,21 @@ impl Rasterizer {
 
     pub fn rasterize_triangle(&mut self, t: &Triangle) {
         /*  implement your code here  */
-        
+        for i in 0..self.height {
+            for j in 0..self.width {
+                let x = j as f64 + 0.5;
+                let y = i as f64 + 0.5;
+                let vertex = t.get_vertex();
+                if inside_triangle(x, y, &vertex) {
+                    let depth = -interplot_triangle(x, y, &vertex);
+                    let ind = self.get_index(j as usize, i as usize);
+                    if depth < self.depth_buf[ind] {
+                        self.frame_buf[ind] = 255.0*t.color[0];
+                        self.depth_buf[ind] = depth;
+                    }
+                }
+            }
+        }
     }
 
     pub fn frame_buffer(&self) -> &Vec<Vector3<f64>> {
@@ -170,10 +184,22 @@ fn to_vec4(v3: Vector3<f64>, w: Option<f64>) -> Vector4<f64> {
     Vector4::new(v3.x, v3.y, v3.z, w.unwrap_or(1.0))
 }
 
+fn pos_flag(x: f64, y: f64, v1: Vector3<f64>, v2: Vector3<f64>) -> f64 {
+    (x-v1.x) * (v2.y - v1.y) - (y-v1.y) * (v2.x - v1.x)
+}
+
 fn inside_triangle(x: f64, y: f64, v: &[Vector3<f64>; 3]) -> bool {
     /*  implement your code here  */
+    let a = pos_flag(x, y, v[0], v[1]);
+    let b = pos_flag(x, y, v[1], v[2]);
+    let c = pos_flag(x, y, v[2], v[0]);
 
-    false
+    a*b>=0.0 && b*c>=0.0
+}
+
+fn interplot_triangle(x: f64, y: f64, v: &[Vector3<f64>; 3]) -> f64 {
+    let (c1, c2, c3) = compute_barycentric2d(x, y, v);
+    v[0].z * c1 + v[1].z * c2 + v[2].z * c3
 }
 
 fn compute_barycentric2d(x: f64, y: f64, v: &[Vector3<f64>; 3]) -> (f64, f64, f64) {
