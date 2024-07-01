@@ -1,4 +1,5 @@
 #![allow(warnings)]
+use std::cmp;
 use std::os::raw::c_void;
 use nalgebra::{Matrix3, Matrix4, Vector3, Vector4};
 use opencv::prelude::*;
@@ -201,7 +202,12 @@ struct Light {
 pub fn normal_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let result_color =
         (payload.normal.xyz().normalize() + Vector3::new(1.0, 1.0, 1.0)) / 2.0;
+    // println!("{}", result_color*255.0);
     result_color * 255.0
+}
+
+pub fn mul_resp(a: &V3f, b: &V3f) -> V3f {
+    V3f::new(a.x * b.x, a.y * b.y, a.z * b.z)
 }
 
 pub fn phong_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
@@ -209,6 +215,8 @@ pub fn phong_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let ka = Vector3::new(0.005, 0.005, 0.005);
     let kd = payload.color;
     let ks = Vector3::new(0.7937, 0.7937, 0.7937);
+
+    // println!("{}", kd);
 
     // 灯光位置和强度
     let l1 = Light {
@@ -226,9 +234,11 @@ pub fn phong_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let p = 150.0;
 
     // ping point的信息
-    let normal = payload.normal;
+    let normal = payload.normal.normalize();
     let point = payload.view_pos;
     let color = payload.color;
+
+    let v = (eye_pos - point).normalize();
 
     let mut result_color = Vector3::zeros(); // 保存光照结果
     
@@ -236,9 +246,16 @@ pub fn phong_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     for light in lights {
         // LAB3 TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
-
-
+        // let r = (light.position - point).norm() + (point-eye_pos).norm();
+        // let r =(point-eye_pos).norm();
+        let r = (light.position - point).norm();
+        let l = (light.position - point).normalize();
+        let h = (v+l).normalize();
+        result_color += mul_resp(&ka, &amb_light_intensity)
+            + mul_resp(&kd, &(light.intensity/(r*r) * normal.dot(&l).max(0.0)))
+            + mul_resp(&ks, &(light.intensity/(r*r) * normal.dot(&h).max(0.0).powi(100)));
     }
+    // println!("{:?}", result_color*255.0); // Debugging code to print the result color
     result_color * 255.0
 }
 
@@ -249,7 +266,7 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
         // <获取材质颜色信息>
 
         None => Vector3::new(0.0, 0.0, 0.0),
-        Some(texture) => Vector3::new(0.0, 0.0, 0.0), // Do modification here
+        Some(texture) => texture.get_color(payload.tex_coords.x, payload.tex_coords.y) // Do modification here
     };
     let kd = texture_color / 255.0; // 材质颜色影响漫反射系数
     let ks = Vector3::new(0.7937, 0.7937, 0.7937);
@@ -270,14 +287,24 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
 
     let color = texture_color;
     let point = payload.view_pos;
-    let normal = payload.normal;
+    let normal = payload.normal.normalize();
+
+    let v = (eye_pos - point).normalize();
 
     let mut result_color = Vector3::zeros();
 
     for light in lights {
         // LAB3 TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
-
+        // let r = (light.position - point).norm() + (point-eye_pos).norm();
+        // let r =(point-eye_pos).norm();
+        let r = (light.position - point).norm();
+        // let r = (light.position - point).norm() * (point-eye_pos).norm();
+        let l = (light.position - point).normalize();
+        let h = (v+l).normalize();
+        result_color += mul_resp(&ka, &amb_light_intensity)
+            + mul_resp(&kd, &(light.intensity/(r*r) * normal.dot(&l).max(0.0)))
+            + mul_resp(&ks, &(light.intensity/(r*r) * normal.dot(&h).max(0.0).powi(100)));
     }
 
     result_color * 255.0

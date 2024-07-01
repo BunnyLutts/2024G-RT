@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use nalgebra::{Matrix4, Vector2, Vector3, Vector4};
+use crate::{choose_shader_texture, phong_fragment_shader, texture};
 use crate::shader::{FragmentShaderPayload, VertexShaderPayload};
 use crate::texture::Texture;
 use crate::triangle::Triangle;
@@ -107,9 +108,67 @@ impl Rasterizer {
         }
     }
 
+    fn get_region_rec(&self, t: &Triangle) -> (u64, u64, u64, u64) {
+        let xl = t.v[0].x.min(t.v[1].x).min(t.v[2].x).max(0.0) as u64;
+        let xr = t.v[0].x.max(t.v[1].x).max(t.v[2].x).min(self.width as f64 - 1.0) as u64;
+        let yl = t.v[0].y.min(t.v[1].y).min(t.v[2].y).max(0.0) as u64;
+        let yr = t.v[0].y.max(t.v[1].y).max(t.v[2].y).min(self.height as f64 - 1.0) as u64;
+        (xl, xr, yl, yr)
+    }
+
     pub fn rasterize_triangle(&mut self, triangle: &Triangle, mvp: Matrix4<f64>) {
         /*  Implement your code here  */
 
+        let inv_mvp = mvp.try_inverse().unwrap();
+        let (now_tri, view_v) = Rasterizer::get_new_tri(triangle, self.view, self.model, mvp, (self.width, self.height));
+
+        let texture = match self.texture.as_ref() {
+            Some(texture) => Some(Rc::new(texture)),
+            None => None,
+        };
+
+        let (xl, xr, yl, yr) = self.get_region_rec(&now_tri);
+
+        for i in yl as u64..=yr as u64 {
+            for j in xl as u64..=xr as u64 {
+                let x = j as f64 + 0.5;
+                let y = i as f64 + 0.5;
+                if inside_triangle(x, y, &now_tri.v) {
+                    let (a, b, c) = compute_barycentric2d(x, y, &now_tri.v);
+                    let z = -(now_tri.v[0].z * a + now_tri.v[1].z * b + now_tri.v[2].z * c);
+                    let ind = Rasterizer::get_index(self.height, self.width, j as usize, i as usize);
+                    if z < self.depth_buf[ind] {
+                        let now_v: Vector4<f64> = Vector4::new(x, y, z, 1.0);
+                        let normal = Rasterizer::interpolate_vec3(
+                            a, b, c,
+                            now_tri.normal[0], now_tri.normal[1], now_tri.normal[2],
+                            1.0,
+                        );
+                        let color = Rasterizer::interpolate_vec3(
+                            a, b, c,
+                            now_tri.color[0], now_tri.color[1], now_tri.color[2],
+                            1.0,
+                        );
+                        let tex_coords = Rasterizer::interpolate_vec2(
+                            a, b, c,
+                            now_tri.tex_coords[0], now_tri.tex_coords[1], now_tri.tex_coords[2],
+                            1.0,
+                        );
+                        self.depth_buf[ind] = z;
+                        self.frame_buf[ind] = match self.fragment_shader {
+                            Some(fs) => fs(&FragmentShaderPayload{
+                                view_pos: Rasterizer::interpolate_vec3(a, b, c, view_v[0], view_v[1], view_v[2], 1.0),
+                                color,
+                                normal,
+                                tex_coords,
+                                texture: texture.clone(),
+                            }),
+                            None => Vector3::new(0.0, 0.0, 0.0),
+                        }
+                    }
+                }
+            }
+        }
 
     }
     
