@@ -345,6 +345,24 @@ pub fn bump_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     // Vector ln = (-dU, -dV, 1)
     // Normal n = normalize(TBN * ln)
 
+    let normal = match payload.texture.as_ref() {
+        Some(tex) => {
+            let n = normal;
+            let (x, y, z) = (normal.x, normal.y, normal.z);
+            let (u, v) = (payload.tex_coords.x, payload.tex_coords.y);
+            let (w, h) = (tex.width as f64, tex.height as f64);
+            let t = Vector3::new(x*y/(x*x+z*z).sqrt(), (x*x+z*z).sqrt(), z*y/(x*x+z*z).sqrt());
+            let b = n.cross(&t);
+            let tbn = Matrix3::new(t.x, b.x, n.x, t.y, b.y, n.y, t.z, b.z, n.z);
+            let du = kh * kn * (tex.get_color(u+1.0/w, v).norm() - tex.get_color(u, v).norm());
+            let dv = kh * kn * (tex.get_color(u, v+1.0/h).norm() - tex.get_color(u, v).norm());
+            let ln = Vector3::new(-du, -dv, 1.0);
+            (tbn * ln).normalize()
+        }
+        None => normal,
+    };
+
+
     let mut result_color = Vector3::zeros();
     result_color = normal;
 
@@ -387,13 +405,39 @@ pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     // Position p = p + kn * n * h(u,v)
     // Normal n = normalize(TBN * ln)
 
+    let normal = match payload.texture.as_ref() {
+        Some(tex) => {
+            let n = normal;
+            let (x, y, z) = (normal.x, normal.y, normal.z);
+            let (u, v) = (payload.tex_coords.x, payload.tex_coords.y);
+            let (w, h) = (tex.width as f64, tex.height as f64);
+            let t = Vector3::new(x*y/(x*x+z*z).sqrt(), (x*x+z*z).sqrt(), z*y/(x*x+z*z).sqrt());
+            let b = n.cross(&t);
+            let tbn = Matrix3::new(t.x, b.x, n.x, t.y, b.y, n.y, t.z, b.z, n.z);
+            let du = kh * kn * (tex.get_color(u+1.0/w, v).norm() - tex.get_color(u, v).norm());
+            let dv = kh * kn * (tex.get_color(u, v+1.0/h).norm() - tex.get_color(u, v).norm());
+            let ln = Vector3::new(-du, -dv, 1.0);
+            (tbn * ln).normalize()
+        }
+        None => normal,
+    };
+
+    let v = (eye_pos - point).normalize();
     let mut result_color = Vector3::zeros();
     for light in lights {
         // LAB3 TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
-
-        
+        // let r = (light.position - point).norm() + (point-eye_pos).norm();
+        // let r =(point-eye_pos).norm();
+        let r = (light.position - point).norm();
+        // let r = (light.position - point).norm() * (point-eye_pos).norm();
+        let l = (light.position - point).normalize();
+        let h = (v+l).normalize();
+        result_color += mul_resp(&ka, &amb_light_intensity)
+            + mul_resp(&kd, &(light.intensity/(r*r) * normal.dot(&l).max(0.0)))
+            + mul_resp(&ks, &(light.intensity/(r*r) * normal.dot(&h).max(0.0).powi(100)));
     }
+
 
     result_color * 255.0
 }
