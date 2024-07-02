@@ -266,7 +266,7 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
         // <获取材质颜色信息>
 
         None => Vector3::new(0.0, 0.0, 0.0),
-        Some(texture) => texture.get_color(payload.tex_coords.x, payload.tex_coords.y) // Do modification here
+        Some(texture) => texture.get_color_bilinear(payload.tex_coords.x, payload.tex_coords.y) // Do modification here
     };
     let kd = texture_color / 255.0; // 材质颜色影响漫反射系数
     let ks = Vector3::new(0.7937, 0.7937, 0.7937);
@@ -354,8 +354,8 @@ pub fn bump_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
             let t = Vector3::new(x*y/(x*x+z*z).sqrt(), (x*x+z*z).sqrt(), z*y/(x*x+z*z).sqrt());
             let b = n.cross(&t);
             let tbn = Matrix3::new(t.x, b.x, n.x, t.y, b.y, n.y, t.z, b.z, n.z);
-            let du = kh * kn * (tex.get_color(u+1.0/w, v).norm() - tex.get_color(u, v).norm());
-            let dv = kh * kn * (tex.get_color(u, v+1.0/h).norm() - tex.get_color(u, v).norm());
+            let du = kh * kn * (tex.get_color_bilinear(u+1.0/w, v).norm() - tex.get_color_bilinear(u, v).norm());
+            let dv = kh * kn * (tex.get_color_bilinear(u, v+1.0/h).norm() - tex.get_color_bilinear(u, v).norm());
             let ln = Vector3::new(-du, -dv, 1.0);
             (tbn * ln).normalize()
         }
@@ -414,8 +414,8 @@ pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
             let t = Vector3::new(x*y/(x*x+z*z).sqrt(), (x*x+z*z).sqrt(), z*y/(x*x+z*z).sqrt());
             let b = n.cross(&t);
             let tbn = Matrix3::new(t.x, b.x, n.x, t.y, b.y, n.y, t.z, b.z, n.z);
-            let du = kh * kn * (tex.get_color(u+1.0/w, v).norm() - tex.get_color(u, v).norm());
-            let dv = kh * kn * (tex.get_color(u, v+1.0/h).norm() - tex.get_color(u, v).norm());
+            let du = kh * kn * (tex.get_color_bilinear(u+1.0/w, v).norm() - tex.get_color_bilinear(u, v).norm());
+            let dv = kh * kn * (tex.get_color_bilinear(u, v+1.0/h).norm() - tex.get_color_bilinear(u, v).norm());
             let ln = Vector3::new(-du, -dv, 1.0);
             (tbn * ln).normalize()
         }
