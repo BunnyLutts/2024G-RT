@@ -1,8 +1,13 @@
 use lazy_static::lazy_static;
 use std::ops::{Add, AddAssign};
+use rand::{distributions::{Open01, Uniform}, thread_rng, Rng};
 
 pub fn is_ci() -> bool {
     option_env!("CI").unwrap_or_default() == "true"
+}
+
+pub fn rand01() -> f64 {
+    thread_rng().sample::<f64, _>(Open01)
 }
 
 #[derive(Clone, Debug, PartialEq, Copy)]
@@ -34,7 +39,11 @@ impl Vec3 {
     }
 
     pub fn rgb(&self) -> [u8; 3] {
-        [(self.x*255.99) as u8, (self.y*255.99) as u8, (self.z*255.99) as u8]
+        [
+            (self.x.max(0.0).min(0.999) * 255.99) as u8,
+            (self.y.max(0.0).min(0.999) * 255.99) as u8,
+            (self.z.max(0.0).min(0.999) * 255.99) as u8,
+        ]
     }
 
     pub fn normalize(&self) -> Self {
@@ -43,7 +52,43 @@ impl Vec3 {
     }
 
     pub fn dot(&self, other: &Self) -> f64 {
-	self.x * other.x + self.y * other.y + self.z * other.z
+        self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
+    pub fn random() -> Self {
+        Self::new(rand01(), rand01(), rand01())
+    }
+
+    pub fn random_in(min: f64, max: f64) -> Self {
+        let mut rngs = thread_rng();
+        let dist = Uniform::new(min, max);
+        Self::new(
+            rngs.sample(dist),
+            rngs.sample(dist),
+            rngs.sample(dist),
+        )
+    }
+
+    pub fn random_in_unit_sphere() -> Self {
+        loop {
+            let p = Self::random_in(-1.0, 1.0);
+            if p.squared_length() < 1.0 {
+                return p;
+            }
+        }
+    }
+
+    pub fn random_unit() -> Self {
+        Self::random_in_unit_sphere().normalize()
+    }
+
+    pub fn random_on_hemisphere(normal: &Self) -> Self {
+        let in_unit_sphere = Self::random_in_unit_sphere();
+        if in_unit_sphere.dot(normal) > 0.0 {
+            in_unit_sphere
+        } else {
+            -in_unit_sphere
+        }
     }
 }
 
@@ -294,18 +339,8 @@ lazy_static! {
 }
 
 impl Interval {
-    pub fn default() -> Self {
-        Self {
-            min: std::f64::NEG_INFINITY,
-            max: std::f64::INFINITY,
-        }
-    }
-
     pub fn new(min: f64, max: f64) -> Self {
-        Self {
-            min,
-            max,
-        }
+        Self { min, max }
     }
 
     // pub fn empty() -> Self {
@@ -326,5 +361,18 @@ impl Interval {
 
     pub fn surrounds(&self, value: f64) -> bool {
         value > self.min && value < self.max
+    }
+
+    pub fn clamp(&self, value: f64) -> f64 {
+        value.max(self.min).min(self.max)
+    }
+}
+
+impl Default for Interval {
+    fn default() -> Self {
+        Self {
+            min: std::f64::NEG_INFINITY,
+            max: std::f64::INFINITY,
+        }
     }
 }

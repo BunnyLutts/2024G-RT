@@ -2,7 +2,7 @@ use image::{RgbImage, ImageBuffer};
 use indicatif::ProgressBar;
 use std::sync::Arc;
 use crate::color::write_color;
-use crate::utils::{Interval, Vec3};
+use crate::utils::{Interval, Vec3, rand01};
 use crate::utils;
 
 pub struct Ray {
@@ -22,10 +22,11 @@ impl Ray {
         self.ori + self.dir * t
     }
 
-    pub fn color(&self, world: &HittableList) -> Vec3 {
+    pub fn color<T: Hittable>(&self, world: &T) -> Vec3 {
         let t = Interval::new(0.0, std::f64::INFINITY);
         if let Some(rec) = world.hit(&self, &t) {
-            return 0.5 * (rec.normal + Vec3::new(1.0, 1.0, 1.0));
+            let dir = Vec3::random_on_hemisphere(&rec.normal);
+            return 0.5 * Ray::new(rec.p, dir).color(world);
         }
 
         let blue = Vec3::new(0.5, 0.7, 1.0);
@@ -109,6 +110,7 @@ pub struct Camera {
     pub pixel_delta_v: Vec3,
     pub view_upper_left: Vec3,
     pub pixel00_loc: Vec3,
+    pub sample_times: usize,
 }
 
 impl Camera {
@@ -118,6 +120,7 @@ impl Camera {
         ratio: f64,
         focal_length: f64,
         camera_center: Vec3,
+        sample_times: usize,
     ) -> Self {
         let image_width = img_width;
         let image_height = ((img_width as f64 / ratio) as usize).max(1);
@@ -147,7 +150,18 @@ impl Camera {
             pixel_delta_v,
             view_upper_left,
             pixel00_loc,
+            sample_times,
         }
+    }
+
+    fn sample_square() -> Vec3 {
+        Vec3::new(rand01()-0.5, rand01()-0.5, 0.0)
+    }
+
+    fn get_ray(&self, u: f64, v: f64) -> Ray {
+        let offset = Camera::sample_square();
+        let pixel_sample = self.pixel00_loc + ((u+offset.x) * self.pixel_delta_u) + ((v+offset.y) * self.pixel_delta_v);
+        Ray::new(self.camera_center, pixel_sample - self.camera_center)
     }
 
     pub fn render(&self, world: &HittableList) -> RgbImage {
@@ -159,13 +173,15 @@ impl Camera {
 
         let mut img: RgbImage = ImageBuffer::new(self.image_width as u32, self.image_height as u32);
 
+        let sample_scale = 1.0 / (self.sample_times as f64);
         for j in 0..self.image_height {
             for i in 0..self.image_width {
-                let pixel_center = self.pixel00_loc
-                    + self.pixel_delta_u * (i as f64)
-                    + self.pixel_delta_v * (j as f64);
-                let ray = Ray::new(self.camera_center, pixel_center - self.camera_center);
-                let color = ray.color(&world);
+                let mut color = Vec3::new(0.0, 0.0, 0.0);
+                for _ in 0..self.sample_times {
+                    let ray = self.get_ray(i as f64, j as f64);
+                    color += ray.color(world);
+                }
+                color = color * sample_scale;
                 write_color(color.rgb(), &mut img, i, j);
                 bar.inc(1);
             }

@@ -32,7 +32,8 @@ fn main() {
         2.0,
         16.0 / 9.0,
         1.0,
-        Vec3::new(0.0, 0.0, 0.0)
+        Vec3::new(0.0, 0.0, 0.0),
+        100,
     );
     let mut world = HittableList::new();
     world.add(Arc::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5)));
