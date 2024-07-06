@@ -104,8 +104,15 @@ impl Vec3 {
         self.x.abs() < EPS && self.y.abs() < EPS && self.z.abs() < EPS
     }
 
-    pub fn reflect(&self, normal: Self) -> Self {
-        *self - 2.0 * self.dot(&normal) * normal
+    pub fn reflect(&self, normal: &Self) -> Self {
+        *self - 2.0 * self.dot(normal) * *normal
+    }
+
+    pub fn refract(&self, normal: &Self, ni_over_nt: f64) -> Self {
+        let cos_theta = (-self.dot(normal)).min(1.0);
+        let r_out_perp = ni_over_nt * (*self + *normal * cos_theta);
+        let r_out_parallel = -(1.0 - r_out_perp.squared_length()).abs().sqrt() * *normal;
+        r_out_perp + r_out_parallel
     }
 }
 

@@ -1,10 +1,10 @@
-use image::{RgbImage, ImageBuffer};
+use crate::color::write_color;
+use crate::material::Material;
+use crate::utils::{rand01, Interval, Vec3};
+use crate::utils;
+use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 use std::sync::Arc;
-use crate::color::write_color;
-use crate::utils::{Interval, Vec3, rand01};
-use crate::utils;
-use crate::material::Material;
 
 pub struct Ray {
     pub ori: Vec3,
@@ -32,9 +32,7 @@ impl Ray {
         let t = Interval::new(0.001, std::f64::INFINITY);
         if let Some(rec) = world.hit(&self, &t) {
             return match rec.mat.scatter(self, &rec) {
-                Some(scatter_rec) => {
-                    scatter_rec.attenuation * scatter_rec.scattered.color(world)
-                }
+                Some(scatter_rec) => scatter_rec.attenuation * scatter_rec.scattered.color(world),
                 None => Vec3::zero(),
             };
         }
@@ -170,13 +168,19 @@ impl Camera {
     }
 
     fn sample_square() -> Vec3 {
-        Vec3::new(rand01()-0.5, rand01()-0.5, 0.0)
+        Vec3::new(rand01() - 0.5, rand01() - 0.5, 0.0)
     }
 
     fn get_ray(&self, u: f64, v: f64) -> Ray {
         let offset = Camera::sample_square();
-        let pixel_sample = self.pixel00_loc + ((u+offset.x) * self.pixel_delta_u) + ((v+offset.y) * self.pixel_delta_v);
-        Ray::new(self.camera_center, pixel_sample - self.camera_center, self.reflect_depth)
+        let pixel_sample = self.pixel00_loc
+            + ((u + offset.x) * self.pixel_delta_u)
+            + ((v + offset.y) * self.pixel_delta_v);
+        Ray::new(
+            self.camera_center,
+            pixel_sample - self.camera_center,
+            self.reflect_depth,
+        )
     }
 
     pub fn render(&self, world: &HittableList) -> RgbImage {
