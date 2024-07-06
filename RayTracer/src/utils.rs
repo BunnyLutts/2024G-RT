@@ -10,6 +10,14 @@ pub fn rand01() -> f64 {
     thread_rng().sample::<f64, _>(Open01)
 }
 
+pub fn linear_to_gamma(x: f64) -> f64 {
+    if x>0.0 {
+        x.sqrt()
+    } else {
+        x
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub struct Vec3 {
     pub x: f64,
@@ -40,9 +48,9 @@ impl Vec3 {
 
     pub fn rgb(&self) -> [u8; 3] {
         [
-            (self.x.max(0.0).min(0.999) * 255.99) as u8,
-            (self.y.max(0.0).min(0.999) * 255.99) as u8,
-            (self.z.max(0.0).min(0.999) * 255.99) as u8,
+            (linear_to_gamma(self.x.max(0.0).min(0.999)) * 255.99) as u8,
+            (linear_to_gamma(self.y.max(0.0).min(0.999)) * 255.99) as u8,
+            (linear_to_gamma(self.z.max(0.0).min(0.999)) * 255.99) as u8,
         ]
     }
 
@@ -89,6 +97,15 @@ impl Vec3 {
         } else {
             -in_unit_sphere
         }
+    }
+
+    pub fn near_zero(&self) -> bool {
+        const EPS:f64 = 1e-8;
+        self.x.abs() < EPS && self.y.abs() < EPS && self.z.abs() < EPS
+    }
+
+    pub fn reflect(&self, normal: Self) -> Self {
+        *self - 2.0 * self.dot(&normal) * normal
     }
 }
 
@@ -169,6 +186,18 @@ impl std::ops::Mul<Vec3> for f64 {
             x: self * rhs.x,
             y: self * rhs.y,
             z: self * rhs.z,
+        }
+    }
+}
+
+impl std::ops::Mul<Vec3> for Vec3 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: Vec3) -> Self::Output {
+        Vec3 {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+            z: self.z * rhs.z,
         }
     }
 }

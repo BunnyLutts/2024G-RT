@@ -4,17 +4,20 @@ use std::sync::Arc;
 use crate::color::write_color;
 use crate::utils::{Interval, Vec3, rand01};
 use crate::utils;
+use crate::material::Material;
 
 pub struct Ray {
     pub ori: Vec3,
     pub dir: Vec3,
+    pub cnt: usize,
 }
 
 impl Ray {
-    pub fn new(origin: Vec3, direction: Vec3) -> Self {
+    pub fn new(origin: Vec3, direction: Vec3, cnt: usize) -> Self {
         Self {
             ori: origin,
             dir: direction,
+            cnt,
         }
     }
 
@@ -23,10 +26,17 @@ impl Ray {
     }
 
     pub fn color<T: Hittable>(&self, world: &T) -> Vec3 {
-        let t = Interval::new(0.0, std::f64::INFINITY);
+        if self.cnt == 0 {
+            return Vec3::zero();
+        }
+        let t = Interval::new(0.001, std::f64::INFINITY);
         if let Some(rec) = world.hit(&self, &t) {
-            let dir = Vec3::random_on_hemisphere(&rec.normal);
-            return 0.5 * Ray::new(rec.p, dir).color(world);
+            return match rec.mat.scatter(self, &rec) {
+                Some(scatter_rec) => {
+                    scatter_rec.attenuation * scatter_rec.scattered.color(world)
+                }
+                None => Vec3::zero(),
+            };
         }
 
         let blue = Vec3::new(0.5, 0.7, 1.0);
@@ -41,10 +51,11 @@ pub struct HitRecord {
     pub normal: Vec3,
     pub t: f64,
     pub face_out: bool,
+    pub mat: Arc<dyn Material>,
 }
 
 impl HitRecord {
-    pub fn new(p: Vec3, t: f64, out_normal: Vec3, r: &Ray) -> Self {
+    pub fn new(p: Vec3, t: f64, out_normal: Vec3, r: &Ray, mat: Arc<dyn Material>) -> Self {
         let face_out = r.dir.dot(&out_normal) < 0.0;
         let normal = if face_out { out_normal } else { -out_normal };
         Self {
@@ -52,6 +63,7 @@ impl HitRecord {
             normal,
             t,
             face_out,
+            mat,
         }
     }
 }
@@ -111,6 +123,7 @@ pub struct Camera {
     pub view_upper_left: Vec3,
     pub pixel00_loc: Vec3,
     pub sample_times: usize,
+    pub reflect_depth: usize,
 }
 
 impl Camera {
@@ -121,6 +134,7 @@ impl Camera {
         focal_length: f64,
         camera_center: Vec3,
         sample_times: usize,
+        reflect_depth: usize,
     ) -> Self {
         let image_width = img_width;
         let image_height = ((img_width as f64 / ratio) as usize).max(1);
@@ -151,6 +165,7 @@ impl Camera {
             view_upper_left,
             pixel00_loc,
             sample_times,
+            reflect_depth,
         }
     }
 
@@ -161,7 +176,7 @@ impl Camera {
     fn get_ray(&self, u: f64, v: f64) -> Ray {
         let offset = Camera::sample_square();
         let pixel_sample = self.pixel00_loc + ((u+offset.x) * self.pixel_delta_u) + ((v+offset.y) * self.pixel_delta_v);
-        Ray::new(self.camera_center, pixel_sample - self.camera_center)
+        Ray::new(self.camera_center, pixel_sample - self.camera_center, self.reflect_depth)
     }
 
     pub fn render(&self, world: &HittableList) -> RgbImage {
