@@ -1,7 +1,7 @@
 use crate::color::write_color;
 use crate::material::Material;
 use crate::utils::{rand01, Interval, Vec3};
-use crate::utils;
+use crate::{camera, utils};
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 use std::sync::Arc;
@@ -106,6 +106,17 @@ impl Hittable for HittableList {
     }
 }
 
+pub struct CameraConfig {
+    pub img_width: usize,
+    pub lookfrom: Vec3,
+    pub lookat: Vec3,
+    pub vup: Vec3,
+    pub vfov: f64,              // This argument is in degrees
+    pub ratio: f64,
+    pub sample_times: usize,
+    pub reflect_depth: usize,
+}
+
 pub struct Camera {
     pub image_width: usize,
     pub image_height: usize,
@@ -113,45 +124,62 @@ pub struct Camera {
     pub view_height: f64,
     pub view_width: f64,
     pub focal_length: f64,
-    pub camera_center: Vec3,
     pub view_u: Vec3,
     pub view_v: Vec3,
-    pub pixel_delta_u: Vec3,
-    pub pixel_delta_v: Vec3,
     pub view_upper_left: Vec3,
-    pub pixel00_loc: Vec3,
     pub sample_times: usize,
     pub reflect_depth: usize,
+    pub vfov: f64,              // This argument is in degrees
+    pub lookfrom: Vec3,
+    pub lookat: Vec3,
+    pub vup: Vec3,
+
+    camera_center: Vec3,
+    pixel00_loc: Vec3,
+    pixel_delta_u: Vec3,
+    pixel_delta_v: Vec3,
+    sample_scale: f64,
+    u: Vec3,
+    v: Vec3,
+    w: Vec3,
 }
 
 impl Camera {
-    pub fn new(
-        img_width: usize,
-        view_height: f64,
-        ratio: f64,
-        focal_length: f64,
-        camera_center: Vec3,
-        sample_times: usize,
-        reflect_depth: usize,
-    ) -> Self {
-        let image_width = img_width;
-        let image_height = ((img_width as f64 / ratio) as usize).max(1);
+    pub fn new(cfg: CameraConfig) -> Self {
+        let image_width = cfg.img_width;
+        let image_height = ((cfg.img_width as f64 / cfg.ratio) as usize).max(1);
+
+        let theta = cfg.vfov.to_radians();
+        let h = (theta/2.0).tan();
+
+        let camera_center = cfg.lookfrom;
+        let focal_length =  (cfg.lookat - cfg.lookfrom).norm();
+        let view_height = 2.0 * h * focal_length;
         let view_width = view_height * (image_width as f64 / image_height as f64);
+
+        let w = (cfg.lookfrom-cfg.lookat).normalize();
+        let u = cfg.vup.cross(&w).normalize();
+        let v = w.cross(&u);
+
         let (view_u, view_v) = (
-            Vec3::new(view_width, 0.0, 0.0),
-            Vec3::new(0.0, -view_height, 0.0),
+            view_width * u,
+            view_height * -v,
         );
+
         let (pixel_delta_u, pixel_delta_v) = (
             view_u / (image_width as f64),
             view_v / (image_height as f64),
         );
+
         let view_upper_left =
-            camera_center - Vec3::new(0.0, 0.0, focal_length) - view_u / 2.0 - view_v / 2.0;
+            camera_center - focal_length * w - view_u / 2.0 - view_v / 2.0;
         let pixel00_loc = view_upper_left + pixel_delta_u + pixel_delta_v;
+        let sample_scale = 1.0 / (cfg.sample_times as f64);
+
         Self {
             image_width,
             image_height,
-            aspect_ratio: ratio,
+            aspect_ratio: cfg.ratio,
             view_height,
             view_width,
             focal_length,
@@ -162,8 +190,16 @@ impl Camera {
             pixel_delta_v,
             view_upper_left,
             pixel00_loc,
-            sample_times,
-            reflect_depth,
+            sample_times: cfg.sample_times,
+            reflect_depth: cfg.reflect_depth,
+            vfov: cfg.vfov,
+            sample_scale,
+            lookfrom: cfg.lookfrom,
+            lookat: cfg.lookat,
+            vup: cfg.vup,
+            u,
+            v,
+            w,
         }
     }
 
@@ -192,7 +228,6 @@ impl Camera {
 
         let mut img: RgbImage = ImageBuffer::new(self.image_width as u32, self.image_height as u32);
 
-        let sample_scale = 1.0 / (self.sample_times as f64);
         for j in 0..self.image_height {
             for i in 0..self.image_width {
                 let mut color = Vec3::new(0.0, 0.0, 0.0);
@@ -200,7 +235,7 @@ impl Camera {
                     let ray = self.get_ray(i as f64, j as f64);
                     color += ray.color(world);
                 }
-                color = color * sample_scale;
+                color = color * self.sample_scale;
                 write_color(color.rgb(), &mut img, i, j);
                 bar.inc(1);
             }

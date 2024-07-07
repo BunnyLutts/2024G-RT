@@ -9,7 +9,8 @@ use crate::ray::HittableList;
 use crate::sphere::Sphere;
 use crate::utils::Vec3;
 use crate::material::*;
-use ray::Camera;
+use ray::{Camera, CameraConfig};
+use std::f64::consts::PI;
 use std::fs::File;
 use std::sync::Arc;
 
@@ -19,27 +20,30 @@ fn main() {
     let path = "output/test.jpg";
     let quality = 60;
 
-    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8,0.8, 0.0)));
+    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
     let material_center = Arc::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
-    let material_left = Arc::new(Dielectric::new(1.50));
-    let material_bubble = Arc::new(Dielectric::new(1.0/1.50));
-    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 1.0));
+    let material_left = Arc::new(Dielectric::new(1.5));
+    let material_bubble = Arc::new(Dielectric::new(1.0 / 1.5));
+    let material_right = Arc::new(Metal::new(Vec3::new(0.8,0.6, 0.2), 1.0));
 
-    let camera = Camera::new(
-        400, 
-        2.0,
-        16.0 / 9.0,
-        1.0,
-        Vec3::new(0.0, 0.0, 0.0),
-        100,
-        10,
-    );
     let mut world = HittableList::new();
-    world.add(Arc::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, material_ground.clone())));
-    world.add(Arc::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, material_center.clone())));
-    world.add(Arc::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, material_left.clone())));
-    world.add(Arc::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.4, material_bubble.clone())));
-    world.add(Arc::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, material_right.clone())));
+    world.add(Arc::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, material_ground)));
+    world.add(Arc::new(Sphere::new(Vec3::new(0.0, 0.0, -1.2), 0.5, material_center)));
+    world.add(Arc::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, material_left)));
+    world.add(Arc::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.4, material_bubble)));
+    world.add(Arc::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, material_right)));
+
+    let camera = Camera::new(CameraConfig {
+        ratio: 16.0 / 9.0,
+        img_width: 400,
+        sample_times: 100,
+        reflect_depth: 50,
+        vfov: 20.0,
+        lookfrom: Vec3::new(-2.0, 2.0, 1.0),
+        lookat: Vec3::new(0.0, 0.0, -1.0),
+        vup: Vec3::new(0.0, 1.0, 0.0),
+    });
+
     let img = camera.render(&world);
 
     println!("Ouput image as \"{}\"\n Author: {}", path, AUTHOR);

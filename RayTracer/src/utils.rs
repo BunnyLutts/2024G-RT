@@ -1,6 +1,9 @@
 use lazy_static::lazy_static;
+use rand::{
+    distributions::{Open01, Uniform},
+    thread_rng, Rng,
+};
 use std::ops::{Add, AddAssign};
-use rand::{distributions::{Open01, Uniform}, thread_rng, Rng};
 
 pub fn is_ci() -> bool {
     option_env!("CI").unwrap_or_default() == "true"
@@ -11,7 +14,7 @@ pub fn rand01() -> f64 {
 }
 
 pub fn linear_to_gamma(x: f64) -> f64 {
-    if x>0.0 {
+    if x > 0.0 {
         x.sqrt()
     } else {
         x
@@ -63,6 +66,14 @@ impl Vec3 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
+    pub fn cross(&self, other: &Self) -> Self {
+        Vec3::new(
+            self.y * other.z - self.z * other.y,
+            self.z * other.x - self.x * other.z,
+            self.x * other.y - self.y * other.x,
+        )
+    }
+
     pub fn random() -> Self {
         Self::new(rand01(), rand01(), rand01())
     }
@@ -70,11 +81,7 @@ impl Vec3 {
     pub fn random_in(min: f64, max: f64) -> Self {
         let mut rngs = thread_rng();
         let dist = Uniform::new(min, max);
-        Self::new(
-            rngs.sample(dist),
-            rngs.sample(dist),
-            rngs.sample(dist),
-        )
+        Self::new(rngs.sample(dist), rngs.sample(dist), rngs.sample(dist))
     }
 
     pub fn random_in_unit_sphere() -> Self {
@@ -100,7 +107,7 @@ impl Vec3 {
     }
 
     pub fn near_zero(&self) -> bool {
-        const EPS:f64 = 1e-8;
+        const EPS: f64 = 1e-8;
         self.x.abs() < EPS && self.y.abs() < EPS && self.z.abs() < EPS
     }
 
