@@ -9,6 +9,7 @@ use crate::sphere::Sphere;
 use crate::utils::Vec3;
 use crate::material::*;
 use ray::{Camera, CameraConfig};
+use utils::rand01;
 use std::fs::File;
 use std::sync::Arc;
 
@@ -18,30 +19,53 @@ fn main() {
     let path = "output/test.jpg";
     let quality = 60;
 
-    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
-    let material_center = Arc::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
-    let material_left = Arc::new(Dielectric::new(1.5));
-    let material_bubble = Arc::new(Dielectric::new(1.0 / 1.5));
-    let material_right = Arc::new(Metal::new(Vec3::new(0.8,0.6, 0.2), 1.0));
-
     let mut world = HittableList::new();
-    world.add(Arc::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, material_ground)));
-    world.add(Arc::new(Sphere::new(Vec3::new(0.0, 0.0, -1.2), 0.5, material_center)));
-    world.add(Arc::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, material_left)));
-    world.add(Arc::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.4, material_bubble)));
-    world.add(Arc::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, material_right)));
+    let ground_material = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
+    world.add(Arc::new(Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material.clone())));
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat = rand01();
+            let center = Vec3::new(a as f64 + 0.9 * rand01(), 0.2, b as f64 + 0.9 * rand01());
+
+            if (center - Vec3::new(4.0, 0.2, 0.0)).norm() > 0.9 {
+                if choose_mat < 0.8 {
+                    let albedo = Vec3::random_xyz01() * Vec3::random_xyz01();
+                    let sphere_material = Arc::new(Lambertian::new(albedo));
+                    world.add(Arc::new(Sphere::new(center, 0.2, sphere_material.clone())));
+                } else if choose_mat < 0.95 {
+                    let albedo = Vec3::random_in(0.5, 1.0);
+                    let fuzz  = rand01()/2.0;
+                    let sphere_material = Arc::new(Metal::new(albedo, fuzz));
+                    world.add(Arc::new(Sphere::new(center, 0.2, sphere_material.clone())));
+                } else {
+                    let sphere_material = Arc::new(Dielectric::new(1.5));
+                    world.add(Arc::new(Sphere::new(center, 0.2, sphere_material.clone())));
+                }
+            }
+        }
+    }
+
+    let material1 = Arc::new(Dielectric::new(1.5));
+    world.add(Arc::new(Sphere::new(Vec3::new(0.0, 1.0, 0.0), 0.5, material1.clone())));
+
+    let material2 = Arc::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1)));
+    world.add(Arc::new(Sphere::new(Vec3::new(-4.0, 1.0, 0.0), 1.0, material2.clone())));
+
+    let material3 = Arc::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0));
+    world.add(Arc::new(Sphere::new(Vec3::new(4.0, 1.0, 0.0), 1.0, material3.clone())));
 
     let camera = Camera::new(CameraConfig {
         ratio: 16.0 / 9.0,
-        img_width: 400,
-        sample_times: 100,
+        img_width: 1980,
+        sample_times: 500,
         reflect_depth: 50,
         vfov: 20.0,
-        lookfrom: Vec3::new(-2.0, 2.0, 1.0),
-        lookat: Vec3::new(0.0, 0.0, -1.0),
+        lookfrom: Vec3::new(13.0, 2.0, 3.0),
+        lookat: Vec3::new(0.0, 0.0, 0.0),
         vup: Vec3::new(0.0, 1.0, 0.0),
-        focus_dist: 3.4,
-        defocus_angle: 10.0,
+        focus_dist: 10.0,
+        defocus_angle: 0.6,
     });
 
     let img = camera.render(&world);
