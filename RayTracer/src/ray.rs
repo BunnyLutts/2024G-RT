@@ -267,12 +267,6 @@ impl Camera {
                     .map(|_| self.get_ray(i as f64, j as f64).color(world))
                     .sum::<Vec3>()
                     * self.sample_scale;
-                // let mut color = Vec3::new(0.0, 0.0, 0.0);
-                // for _ in 0..self.sample_times {
-                //     let ray = self.get_ray(i as f64, j as f64);
-                //     color += ray.color(world);
-                // }
-                // color = color * self.sample_scale;
                 write_color(color.rgb(), &mut img, i, j);
                 bar.inc(1);
             }
