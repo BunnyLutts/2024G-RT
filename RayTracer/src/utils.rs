@@ -3,7 +3,7 @@ use rand::{
     distributions::{Open01, Uniform},
     thread_rng, Rng,
 };
-use std::ops::{Add, AddAssign};
+use std::{iter::Sum, ops::{Add, AddAssign}};
 
 pub fn is_ci() -> bool {
     option_env!("CI").unwrap_or_default() == "true"
@@ -234,6 +234,16 @@ impl std::ops::Div<f64> for Vec3 {
             y: self.y / rhs,
             z: self.z / rhs,
         }
+    }
+}
+
+impl Sum for Vec3 {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        let mut sum = Vec3::zero();
+        for v in iter {
+            sum += v;
+        }
+        sum
     }
 }
 

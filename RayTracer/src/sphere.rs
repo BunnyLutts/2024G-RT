@@ -6,11 +6,11 @@ use crate::material::Material;
 pub struct Sphere {
     center: Vec3,
     radius: f64,
-    mat: Arc<dyn Material>,
+    mat: Arc<dyn Material + Sync + Send>,
 }
 
 impl Sphere {
-    pub fn new(center: Vec3, radius: f64, mat: Arc<dyn Material>) -> Self {
+    pub fn new(center: Vec3, radius: f64, mat: Arc<dyn Material + Sync + Send>) -> Self {
         Self {
             center,
             radius: radius.max(0.0),
