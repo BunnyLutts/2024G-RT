@@ -2,7 +2,6 @@ mod color;
 mod utils;
 mod ray;
 mod sphere;
-mod camera;
 mod material;
 
 use crate::ray::HittableList;
@@ -10,7 +9,6 @@ use crate::sphere::Sphere;
 use crate::utils::Vec3;
 use crate::material::*;
 use ray::{Camera, CameraConfig};
-use std::f64::consts::PI;
 use std::fs::File;
 use std::sync::Arc;
 
@@ -42,6 +40,8 @@ fn main() {
         lookfrom: Vec3::new(-2.0, 2.0, 1.0),
         lookat: Vec3::new(0.0, 0.0, -1.0),
         vup: Vec3::new(0.0, 1.0, 0.0),
+        focus_dist: 3.4,
+        defocus_angle: 10.0,
     });
 
     let img = camera.render(&world);

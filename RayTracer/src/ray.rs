@@ -1,7 +1,7 @@
 use crate::color::write_color;
 use crate::material::Material;
 use crate::utils::{rand01, Interval, Vec3};
-use crate::{camera, utils};
+use crate::utils;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 use std::sync::Arc;
@@ -115,6 +115,25 @@ pub struct CameraConfig {
     pub ratio: f64,
     pub sample_times: usize,
     pub reflect_depth: usize,
+    pub defocus_angle: f64,
+    pub focus_dist: f64,
+}
+
+impl Default for CameraConfig {
+    fn default() -> Self {
+        Self {
+            img_width: 100,
+            ratio: 1.0,
+            sample_times: 10,
+            reflect_depth: 10,
+            vfov: 90.0,
+            lookfrom: Vec3::new(0.0, 0.0, 0.0),
+            lookat: Vec3::new(0.0, 0.0, -1.0),
+            vup: Vec3::new(0.0, 1.0, 0.0),
+            focus_dist: 10.0,
+            defocus_angle: 0.0,
+        }
+    }
 }
 
 pub struct Camera {
@@ -123,7 +142,6 @@ pub struct Camera {
     pub aspect_ratio: f64,
     pub view_height: f64,
     pub view_width: f64,
-    pub focal_length: f64,
     pub view_u: Vec3,
     pub view_v: Vec3,
     pub view_upper_left: Vec3,
@@ -133,6 +151,8 @@ pub struct Camera {
     pub lookfrom: Vec3,
     pub lookat: Vec3,
     pub vup: Vec3,
+    pub defocus_angle: f64,
+    pub focus_dist: f64,
 
     camera_center: Vec3,
     pixel00_loc: Vec3,
@@ -142,6 +162,8 @@ pub struct Camera {
     u: Vec3,
     v: Vec3,
     w: Vec3,
+    defocus_disk_u: Vec3,
+    defocus_disk_v: Vec3,
 }
 
 impl Camera {
@@ -153,8 +175,8 @@ impl Camera {
         let h = (theta/2.0).tan();
 
         let camera_center = cfg.lookfrom;
-        let focal_length =  (cfg.lookat - cfg.lookfrom).norm();
-        let view_height = 2.0 * h * focal_length;
+        // let focal_length =  (cfg.lookat - cfg.lookfrom).norm();
+        let view_height = 2.0 * h * cfg.focus_dist;
         let view_width = view_height * (image_width as f64 / image_height as f64);
 
         let w = (cfg.lookfrom-cfg.lookat).normalize();
@@ -172,9 +194,13 @@ impl Camera {
         );
 
         let view_upper_left =
-            camera_center - focal_length * w - view_u / 2.0 - view_v / 2.0;
+            camera_center - cfg.focus_dist * w - view_u / 2.0 - view_v / 2.0;
         let pixel00_loc = view_upper_left + pixel_delta_u + pixel_delta_v;
         let sample_scale = 1.0 / (cfg.sample_times as f64);
+
+        let defocus_radius = cfg.focus_dist * (cfg.defocus_angle/2.0).to_radians().tan();
+        let defocus_disk_u = u * defocus_radius;
+        let defocus_disk_v = v * defocus_radius;
 
         Self {
             image_width,
@@ -182,7 +208,6 @@ impl Camera {
             aspect_ratio: cfg.ratio,
             view_height,
             view_width,
-            focal_length,
             camera_center,
             view_u,
             view_v,
@@ -200,6 +225,10 @@ impl Camera {
             u,
             v,
             w,
+            defocus_angle: cfg.defocus_angle,
+            focus_dist: cfg.focus_dist,
+            defocus_disk_u,
+            defocus_disk_v,
         }
     }
 
@@ -212,11 +241,17 @@ impl Camera {
         let pixel_sample = self.pixel00_loc
             + ((u + offset.x) * self.pixel_delta_u)
             + ((v + offset.y) * self.pixel_delta_v);
+        let ray_origin = if self.defocus_angle <= 0.0 {self.camera_center} else {self.defocus_disk_sample()};
         Ray::new(
-            self.camera_center,
-            pixel_sample - self.camera_center,
+            ray_origin,
+            pixel_sample - ray_origin,
             self.reflect_depth,
         )
+    }
+
+    pub fn defocus_disk_sample(&self) -> Vec3 {
+        let p = Vec3::random_in_unit_disk();
+        self.camera_center + p.x * self.defocus_disk_u + p.y * self.defocus_disk_v
     }
 
     pub fn render(&self, world: &HittableList) -> RgbImage {

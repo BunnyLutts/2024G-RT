@@ -74,7 +74,7 @@ impl Vec3 {
         )
     }
 
-    pub fn random() -> Self {
+    pub fn random_xyz01() -> Self {
         Self::new(rand01(), rand01(), rand01())
     }
 
@@ -97,12 +97,21 @@ impl Vec3 {
         Self::random_in_unit_sphere().normalize()
     }
 
-    pub fn random_on_hemisphere(normal: &Self) -> Self {
+    pub fn random_in_unit_hemisphere(normal: &Self) -> Self {
         let in_unit_sphere = Self::random_in_unit_sphere();
         if in_unit_sphere.dot(normal) > 0.0 {
             in_unit_sphere
         } else {
             -in_unit_sphere
+        }
+    }
+
+    pub fn random_in_unit_disk() -> Self {
+        loop {
+            let v = Self::new(rand01()*2.0-1.0, rand01()*2.0-1.0, 0.0);
+            if v.squared_length() < 1.0 {
+                return v;
+            }
         }
     }
 
