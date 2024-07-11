@@ -97,7 +97,11 @@ impl BVHNode {
     }
 
     pub fn new(objects: Vec<Arc<dyn Hittable + Send + Sync>>) -> Self {
-        let axis = rand::thread_rng().gen_range(0..3);
+        let mut bbox = AABB::default();
+        for i in &objects {
+            bbox = bbox.combine(&i.bounding_box());
+        }
+        let axis = bbox.longest_axis();
         let compare_fn = match axis {
             0 => Self::box_x_compare,
             1 => Self::box_y_compare,
@@ -109,12 +113,12 @@ impl BVHNode {
             Self {
                 left: objects[0].clone(),
                 right: objects[0].clone(),
-                bbox: objects[0].bounding_box(),
+                bbox,
             }
         } else if objects.len() == 2 {
             // println!("2: {:?}", objects[0].bounding_box().combine(&objects[1].bounding_box()));
             Self {
-                bbox: objects[0].bounding_box().combine(&objects[1].bounding_box()),
+                bbox,
                 left: objects[0].clone(),
                 right: objects[1].clone(),
             }
@@ -127,7 +131,7 @@ impl BVHNode {
             let right = Arc::new(BVHNode::new(right_vec.to_vec()));
             // println!("3: {:?}", left.bbox.combine(&right.bbox));
             Self {
-                bbox: left.bbox.combine(&right.bbox),
+                bbox,
                 left, right,
             }
         }

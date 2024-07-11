@@ -3,7 +3,8 @@ use rand::{
     distributions::{Open01, Uniform},
     thread_rng, Rng,
 };
-use std::{iter::Sum, ops::{Add, AddAssign}};
+use std::{iter::Sum, mem::swap, ops::{Add, AddAssign}};
+use std::cmp::Ordering;
 
 pub fn is_ci() -> bool {
     option_env!("CI").unwrap_or_default() == "true"
@@ -18,6 +19,52 @@ pub fn linear_to_gamma(x: f64) -> f64 {
         x.sqrt()
     } else {
         x
+    }
+}
+
+// Sorting by quicksort
+pub fn inplace_sort<T>(v: &mut Vec<T>, begin: usize, end: usize, cmp_fn: &impl Fn(&T, &T) -> std::cmp::Ordering) {
+    if end - begin < 2 {
+        return; 
+    }
+
+    let pivot_index = partition(v, begin, end, cmp_fn);
+    inplace_sort(v, begin, pivot_index, cmp_fn); 
+    inplace_sort(v, pivot_index + 1, end, cmp_fn); 
+}
+
+fn partition<T>(v: &mut Vec<T>, begin: usize, end: usize, cmp_fn: &impl Fn(&T, &T) -> std::cmp::Ordering) -> usize {
+    let p = thread_rng().gen_range(begin..end);
+    v.swap(p, end - 1);  
+    let mut i = begin;
+    for j in begin..end - 1 {
+        if cmp_fn(&v[j], &v[end-1]) != std::cmp::Ordering::Greater {
+            v.swap(i, j);
+            i += 1;
+        }
+    }
+    v.swap(i, end - 1); 
+    i 
+}
+
+
+#[cfg(test)]
+mod tests_sort {
+    use crate::utils::inplace_sort;
+
+    #[test]
+    fn test_inplace_sort() {
+        let mut v = vec![3, 1, 2, 4, 5];
+        inplace_sort(&mut v, 0, 5, &|a, b| a.cmp(b));
+        assert_eq!(v, vec![1, 2, 3, 4, 5]);
+        let mut v = vec![5, 4, 3, 2, 1];
+        inplace_sort(&mut v, 0, 2, &|a, b| a.cmp(b));
+        assert_eq!(v, vec![4, 5, 3, 2, 1]);
+
+        let mut v = vec![3, 6, 4, 5, 2, 1, 8, 7];
+        inplace_sort(&mut v, 0, 4, &|a, b| a.cmp(b));
+        inplace_sort(&mut v, 4, 8, &|a, b| a.cmp(b));
+        assert_eq!(v, vec![3, 4, 5, 6, 1, 2, 7, 8])
     }
 }
 
@@ -248,7 +295,7 @@ impl Sum for Vec3 {
 }
 
 #[cfg(test)]
-mod tests {
+mod tests_vec3 {
     use super::*;
 
     #[test]

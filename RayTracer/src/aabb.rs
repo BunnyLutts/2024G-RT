@@ -44,6 +44,21 @@ impl AABB {
         // println!("t_x: {:?}, t_y: {:?}, t_z: {:?}", t_x, t_y, t_z);
         !t_x.intersect(&t_y).intersect(&t_z).is_empty()
     }
+
+    pub fn longest_axis(&self) -> usize {
+        let (x_len, y_len, z_len) = (
+            self.x.max - self.x.min,
+            self.y.max - self.y.min,
+            self.z.max - self.z.min,
+        );
+        if x_len > y_len && x_len > z_len {
+            0
+        } else if y_len > z_len {
+            1
+        } else {
+            2
+        }
+    }
 }
 
 impl Default for AABB {
