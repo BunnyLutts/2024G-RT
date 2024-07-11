@@ -1,4 +1,5 @@
-use crate::ray::{HitRecord, Ray};
+use crate::ray::Ray;
+use crate::hittable::HitRecord;
 use crate::utils::{rand01, Vec3};
 
 pub struct ScatterRec {
@@ -34,7 +35,7 @@ impl Material for Lambertian {
         }
         Some(ScatterRec::new(
             self.albedo,
-            Ray::new(hit_record.p, scatter_dir, ray_in.cnt - 1),
+            ray_in.update(hit_record.p, scatter_dir),
         ))
     }
 }
@@ -56,7 +57,7 @@ impl Material for Metal {
         if reflected.dot(&hit_record.normal) > 0.0 {
             Some(ScatterRec::new(
                 self.albedo,
-                Ray::new(hit_record.p, reflected, ray_in.cnt - 1),
+                ray_in.update(hit_record.p, reflected),
             ))
         } else {
             None
@@ -103,7 +104,7 @@ impl Material for Dielectric {
         };
         Some(ScatterRec::new(
             attenuation,
-            Ray::new(hit_record.p, direction, ray_in.cnt - 1),
+            ray_in.update(hit_record.p, direction),
         ))
     }
 }

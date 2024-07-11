@@ -1,24 +1,34 @@
 use crate::color::write_color;
-use crate::material::Material;
 use crate::utils;
 use crate::utils::{rand01, Interval, Vec3};
+use crate::hittable::Hittable;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 use rayon::prelude::*;
-use std::sync::Arc;
 
 pub struct Ray {
     pub ori: Vec3,
     pub dir: Vec3,
     pub cnt: usize,
+    pub time: f64,
 }
 
 impl Ray {
-    pub fn new(origin: Vec3, direction: Vec3, cnt: usize) -> Self {
+    pub fn new(origin: Vec3, direction: Vec3, time:f64, cnt: usize) -> Self {
         Self {
             ori: origin,
             dir: direction,
             cnt,
+            time,
+        }
+    }
+
+    pub fn update(&self, origin: Vec3, direction: Vec3) -> Self {
+        Self {
+            ori: origin,
+            dir: direction,
+            cnt: self.cnt - 1,
+            time: self.time,
         }
     }
 
@@ -30,7 +40,7 @@ impl Ray {
         if self.cnt == 0 {
             return Vec3::zero();
         }
-        let t = Interval::new(0.001, std::f64::INFINITY);
+        let t = Interval::new(0.001, f64::INFINITY);
         if let Some(rec) = world.hit(&self, &t) {
             return match rec.mat.scatter(self, &rec) {
                 Some(scatter_rec) => scatter_rec.attenuation * scatter_rec.scattered.color(world),
@@ -45,67 +55,6 @@ impl Ray {
     }
 }
 
-pub struct HitRecord {
-    pub p: Vec3,
-    pub normal: Vec3,
-    pub t: f64,
-    pub face_out: bool,
-    pub mat: Arc<dyn Material+ Sync + Send>,
-}
-
-impl HitRecord {
-    pub fn new(p: Vec3, t: f64, out_normal: Vec3, r: &Ray, mat: Arc<dyn Material + Sync + Send>) -> Self {
-        let face_out = r.dir.dot(&out_normal) < 0.0;
-        let normal = if face_out { out_normal } else { -out_normal };
-        Self {
-            p,
-            normal,
-            t,
-            face_out,
-            mat,
-        }
-    }
-}
-
-pub trait Hittable {
-    fn hit(&self, r: &Ray, r_t: &Interval) -> Option<HitRecord>;
-}
-
-pub struct HittableList {
-    objects: Vec<Arc<dyn Hittable + Sync + Send>>,
-}
-
-impl HittableList {
-    pub fn new() -> Self {
-        Self {
-            objects: Vec::new(),
-        }
-    }
-
-    pub fn clear(&mut self) {
-        self.objects.clear();
-    }
-
-    pub fn add(&mut self, obj: Arc<dyn Hittable + Sync + Send>) {
-        self.objects.push(obj);
-    }
-}
-
-impl Hittable for HittableList {
-    fn hit(&self, r: &Ray, r_t: &Interval) -> Option<HitRecord> {
-        let mut now_t = r_t.clone();
-        let mut hit_record = None;
-
-        for obj in &self.objects {
-            if let Some(rec) = obj.hit(r, &now_t) {
-                now_t.max = rec.t;
-                hit_record = Some(rec);
-            }
-        }
-
-        hit_record
-    }
-}
 
 pub struct CameraConfig {
     pub img_width: usize,
@@ -243,7 +192,8 @@ impl Camera {
         } else {
             self.defocus_disk_sample()
         };
-        Ray::new(ray_origin, pixel_sample - ray_origin, self.reflect_depth)
+        let ray_time = rand01();
+        Ray::new(ray_origin, pixel_sample - ray_origin, ray_time, self.reflect_depth)
     }
 
     pub fn defocus_disk_sample(&self) -> Vec3 {
@@ -251,7 +201,7 @@ impl Camera {
         self.camera_center + p.x * self.defocus_disk_u + p.y * self.defocus_disk_v
     }
 
-    pub fn render(&self, world: &HittableList) -> RgbImage {
+    pub fn render<T: Hittable + Send + Sync>(&self, world: &T) -> RgbImage {
         let bar: ProgressBar = if utils::is_ci() {
             ProgressBar::hidden()
         } else {

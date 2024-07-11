@@ -3,8 +3,10 @@ mod utils;
 mod ray;
 mod sphere;
 mod material;
+mod aabb;
+mod hittable;
 
-use crate::ray::HittableList;
+use crate::hittable::{HittableList, BVHNode};
 use crate::sphere::Sphere;
 use crate::utils::Vec3;
 use crate::material::*;
@@ -21,7 +23,7 @@ fn main() {
 
     let mut world = HittableList::new();
     let ground_material = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
-    world.add(Arc::new(Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material.clone())));
+    world.add(Arc::new(Sphere::stable_new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material.clone())));
 
     for a in -11..11 {
         for b in -11..11 {
@@ -32,33 +34,36 @@ fn main() {
                 if choose_mat < 0.8 {
                     let albedo = Vec3::random_xyz01() * Vec3::random_xyz01();
                     let sphere_material = Arc::new(Lambertian::new(albedo));
-                    world.add(Arc::new(Sphere::new(center, 0.2, sphere_material.clone())));
+                    let velocity = Vec3::new(0.0, rand01()/2.0, 0.0);
+                    world.add(Arc::new(Sphere::new(center, velocity, 0.2, sphere_material.clone())));
                 } else if choose_mat < 0.95 {
                     let albedo = Vec3::random_in(0.5, 1.0);
                     let fuzz  = rand01()/2.0;
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
-                    world.add(Arc::new(Sphere::new(center, 0.2, sphere_material.clone())));
+                    world.add(Arc::new(Sphere::stable_new(center, 0.2, sphere_material.clone())));
                 } else {
                     let sphere_material = Arc::new(Dielectric::new(1.5));
-                    world.add(Arc::new(Sphere::new(center, 0.2, sphere_material.clone())));
+                    world.add(Arc::new(Sphere::stable_new(center, 0.2, sphere_material.clone())));
                 }
             }
         }
     }
 
     let material1 = Arc::new(Dielectric::new(1.5));
-    world.add(Arc::new(Sphere::new(Vec3::new(0.0, 1.0, 0.0), 0.5, material1.clone())));
+    world.add(Arc::new(Sphere::stable_new(Vec3::new(0.0, 1.0, 0.0), 0.5, material1.clone())));
 
     let material2 = Arc::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1)));
-    world.add(Arc::new(Sphere::new(Vec3::new(-4.0, 1.0, 0.0), 1.0, material2.clone())));
+    world.add(Arc::new(Sphere::stable_new(Vec3::new(-4.0, 1.0, 0.0), 1.0, material2.clone())));
 
     let material3 = Arc::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0));
-    world.add(Arc::new(Sphere::new(Vec3::new(4.0, 1.0, 0.0), 1.0, material3.clone())));
+    world.add(Arc::new(Sphere::stable_new(Vec3::new(4.0, 1.0, 0.0), 1.0, material3.clone())));
+
+    let world = BVHNode::from(world);
 
     let camera = Camera::new(CameraConfig {
         ratio: 16.0 / 9.0,
-        img_width: 1980,
-        sample_times: 500,
+        img_width: 400,
+        sample_times: 100,
         reflect_depth: 50,
         vfov: 20.0,
         lookfrom: Vec3::new(13.0, 2.0, 3.0),

@@ -396,8 +396,8 @@ pub struct Interval {
 }
 
 lazy_static! {
-    pub static ref EMPTY: Interval = Interval::new(std::f64::INFINITY, std::f64::NEG_INFINITY);
-    pub static ref universe: Interval = Interval::new(std::f64::NEG_INFINITY, std::f64::INFINITY);
+    pub static ref EMPTY: Interval = Interval::new(f64::INFINITY, f64::NEG_INFINITY);
+    pub static ref universe: Interval = Interval::new(f64::NEG_INFINITY, f64::INFINITY);
 }
 
 impl Interval {
@@ -405,12 +405,20 @@ impl Interval {
         Self { min, max }
     }
 
+    pub fn combine(&self, other: &Interval) -> Interval {
+        Interval::new(self.min.min(other.min), self.max.max(other.max))
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.min > self.max
+    }
+
     // pub fn empty() -> Self {
-    //     Self::new(std::f64::INFINITY, std::f64::NEG_INFINITY)
+    //     Self::new(f64::INFINITY, f64::NEG_INFINITY)
     // }
 
     // fn universe() -> Self {
-    //     Self::new(std::f64::NEG_INFINITY, std::f64::INFINITY)
+    //     Self::new(f64::NEG_INFINITY, f64::INFINITY)
     // }
 
     pub fn len(&self) -> f64 {
@@ -428,13 +436,21 @@ impl Interval {
     pub fn clamp(&self, value: f64) -> f64 {
         value.max(self.min).min(self.max)
     }
+
+    pub fn expand(&self, delta: f64) -> Interval {
+        Self::new(self.min - delta, self.max + delta)
+    }
+
+    pub fn intersect(&self, other: &Interval) -> Interval{
+        Interval::new(self.min.max(other.min), self.max.min(other.max))
+    }
 }
 
 impl Default for Interval {
     fn default() -> Self {
         Self {
-            min: std::f64::NEG_INFINITY,
-            max: std::f64::INFINITY,
+            min: f64::NEG_INFINITY,
+            max: f64::INFINITY,
         }
     }
 }
