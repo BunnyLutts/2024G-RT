@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_aabb_sphere_hit() {
-        let sphere = Sphere::stable_new(Vec3::new(0.0, 0.0, 0.0), 1.0, Arc::new(Lambertian::new(Vec3::new(0.8, 0.3, 0.3))));
+        let sphere = Sphere::stable_new(Vec3::new(0.0, 0.0, 0.0), 1.0, Arc::new(Lambertian::from(Vec3::new(0.8, 0.3, 0.3))));
         let aabb = sphere.bounding_box();
         let o = Vec3::new(0.0, 0.0, -5.0);
         let inft = Interval::new(0.0, f64::INFINITY);
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_aabb_sphere_hit_para() {
-        let sphere = Sphere::stable_new(Vec3::new(0.0, 0.0, 0.0), 1.0, Arc::new(Lambertian::new(Vec3::new(0.8, 0.3, 0.3))));
+        let sphere = Sphere::stable_new(Vec3::new(0.0, 0.0, 0.0), 1.0, Arc::new(Lambertian::from(Vec3::new(0.8, 0.3, 0.3))));
         let aabb = sphere.bounding_box();
         let o = Vec3::new(0.0, 0.0, -5.0);
         let inft = Interval::new(0.0, f64::INFINITY);

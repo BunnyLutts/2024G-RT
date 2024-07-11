@@ -13,6 +13,8 @@ pub struct HitRecord {
     pub t: f64,
     pub face_out: bool,
     pub mat: Arc<dyn Material+ Sync + Send>,
+    pub u: f64,
+    pub v: f64,
 }
 
 impl HitRecord {
@@ -25,6 +27,8 @@ impl HitRecord {
             t,
             face_out,
             mat,
+            u: 0.0,
+            v: 0.0,
         }
     }
 }
