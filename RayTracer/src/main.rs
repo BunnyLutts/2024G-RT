@@ -126,7 +126,7 @@ fn cowball() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
 
 fn noise_sphere() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
     let mut world = HittableList::new();
-    let pertext = Arc::new(NoiseTexture::new());
+    let pertext = Arc::new(NoiseTexture::new(4.0));
     world.add(Arc::new(Sphere::stable_new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(pertext.clone())))));
     world.add(Arc::new(Sphere::stable_new(Vec3::new(0.0, 2.0, 0.0), 2.0, Arc::new(Lambertian::new(pertext.clone())))));
     let cam = Camera::new(CameraConfig {

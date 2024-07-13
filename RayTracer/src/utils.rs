@@ -505,7 +505,8 @@ impl Default for Interval {
 const PERLIN_POINT_COUNT: usize = 256;
 pub struct Perlin {
     // Perlin noise generation parameters
-    randfloat: Vec<f64>,
+    // randfloat: Vec<f64>,
+    randvec: Vec<Vec3>,
     perm_x: Vec<usize>,
     perm_y: Vec<usize>,
     perm_z: Vec<usize>,
@@ -513,17 +514,17 @@ pub struct Perlin {
 
 impl Perlin {
     pub fn new() -> Self {
-        let mut randfloat = Vec::new();
-        randfloat.resize(PERLIN_POINT_COUNT, 0.0);
+        let mut randvec = Vec::new();
+        randvec.resize(PERLIN_POINT_COUNT, Vec3::zero());
         for i in 0..PERLIN_POINT_COUNT {
-            randfloat[i] = rand01();
+            randvec[i] = (Vec3::random_xyz01() * 2.0 - Vec3::ones()).normalize();
         }
 
         let perm_x = Self::perlin_generate_perm();
         let perm_y = Self::perlin_generate_perm();
         let perm_z = Self::perlin_generate_perm();
         Self {
-            randfloat,
+            randvec,
             perm_x,
             perm_y,
             perm_z,
@@ -531,7 +532,7 @@ impl Perlin {
     }
 
     pub fn noise(&self, p: &Vec3) -> f64 {
-        let (u, v, w) = (
+        let (mut u, mut v, mut w) = (
             p.x - p.x.floor(),
             p.y - p.y.floor(),
             p.z - p.z.floor(),
@@ -544,11 +545,11 @@ impl Perlin {
             p.z.floor() as i64,
         );
 
-        let mut c = [[[0.0; 2]; 2]; 2];
+        let mut c = [[[Vec3::zero(); 2]; 2]; 2];
         for di in 0..2 {
             for dj in 0..2 {
                 for dk in 0..2 {
-                    c[di][dj][dk] = self.randfloat[
+                    c[di][dj][dk] = self.randvec[
                         self.perm_x[((di as i64 + i)&255) as usize] ^
                         self.perm_y[((dj as i64 + j)&255) as usize] ^
                         self.perm_z[((dk as i64 + k)&255) as usize]
@@ -556,19 +557,39 @@ impl Perlin {
                 }
             }
         }
-        Self::trillinear_interp(&c, u, v, w)
+        Self::perlin_interp(&c, u, v, w)
         // c[0][0][0]
     }
 
-    fn trillinear_interp(c: &[[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+    pub fn turb(&self, p: Vec3, depth: i32) -> f64 {
+        let mut accum = 0.0;
+        let mut temp_p = p;
+        let mut weight = 1.0;
+
+        for _ in 0..depth {
+            accum += weight * self.noise(&temp_p);
+            weight *= 0.5;
+            temp_p = 2.0 * temp_p;
+        }
+
+        accum.abs()
+    }
+
+    fn perlin_interp(c: &[[[Vec3; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+        let (uu, vv, ww) = (
+            u*u*(3.0 - 2.0 * u),
+            v*v*(3.0 - 2.0 * v),
+            w*w*(3.0 - 2.0 * w),
+        );
         let mut accum = 0.0;
         for i in 0..2 {
             for j in 0..2 {
                 for k in 0..2 {
-                    accum += c[i][j][k]
-                    * (i as f64 * u + (1-i) as f64 * (1.0-u))
-                    * (j as f64 * v + (1-j) as f64 * (1.0-v))
-                    * (k as f64 * w + (1-k) as f64 * (1.0-w));
+                    let weight = Vec3::new(u - i as f64, v - j as f64, w - k as f64);
+                    accum += c[i][j][k].dot(&weight)
+                    * (i as f64 * uu + (1-i) as f64 * (1.0-uu))
+                    * (j as f64 * vv + (1-j) as f64 * (1.0-vv))
+                    * (k as f64 * ww + (1-k) as f64 * (1.0-ww));
                 }
             }
         }

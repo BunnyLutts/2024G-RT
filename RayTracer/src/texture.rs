@@ -108,17 +108,20 @@ impl Texture for ImageTexture {
 
 pub struct NoiseTexture {
     noise: Perlin,
+    scale: f64,
 }
 
 impl NoiseTexture {
-    pub fn new() -> Self {
-        Self { noise: Perlin::new() }
+    pub fn new(scale: f64) -> Self {
+        Self { noise: Perlin::new(),  scale,}
     }
 }
 
+
 impl Texture for NoiseTexture {
     fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
-        self.noise.noise(p) * Vec3::ones()
+        // Vec3::ones() * 0.5 * (1.0 + self.noise.noise(&(self.scale * *p)))
+        Vec3::new(0.5, 0.5, 0.5) * (1.0 + (self.scale * p.z + 10.0 * self.noise.turb(p.clone(), 7)).sin())
     }
 }
 
