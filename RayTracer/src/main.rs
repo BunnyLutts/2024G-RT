@@ -19,10 +19,7 @@ use std::sync::Arc;
 
 const AUTHOR: &str = "张仁浩";
 
-fn main() {
-    let path = "output/test.jpg";
-    let quality = 60;
-
+fn bouncing_spheres() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
     let mut world = HittableList::new();
 
     let checker = Arc::new(CheckerTexture::create(0.32, Vec3::new(0.2, 0.3, 0.1), Vec3::new(0.9, 0.9, 0.9)));
@@ -77,10 +74,92 @@ fn main() {
         defocus_angle: 0.6,
     });
 
-    let img = camera.render(&world);
+    camera.render(&world)
+}
+
+fn checkered_spheres() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
+    let mut world = HittableList::new();
+
+    let checker = Arc::new(CheckerTexture::create(0.32, Vec3::new(0.2, 0.3, 0.1), Vec3::new(0.9, 0.9, 0.9)));
+
+    world.add(Arc::new(Sphere::stable_new(Vec3::new(0.0, -10.0, 0.0), 10.0, Arc::new(Lambertian::new(checker.clone())))));
+    world.add(Arc::new(Sphere::stable_new(Vec3::new(0.0, 10.0, 0.0), 10.0, Arc::new(Lambertian::new(checker.clone())))));
+
+    let cam = Camera::new(CameraConfig {
+        ratio: 16.0 / 9.0,
+        img_width: 400,
+        sample_times: 100,
+        reflect_depth: 50,
+        vfov: 20.0,
+        lookfrom: Vec3::new(13.0, 2.0, 3.0),
+        lookat: Vec3::new(0.0, 0.0, 0.0),
+        vup: Vec3::new(0.0, 1.0, 0.0),
+        focus_dist: 10.0,
+        defocus_angle: 0.0,
+    });
+
+    cam.render(&world)
+}
+
+fn cowball() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
+    let texture = Arc::new(ImageTexture::load("image/cow.png").unwrap());
+    let sufrace = Arc::new(Lambertian::new(texture.clone()));
+    let ball = Arc::new(Sphere::stable_new(Vec3::new(0.0, 0.0, 0.0), 2.0, sufrace.clone()));
+
+    let cam = Camera::new(CameraConfig {
+        ratio: 16.0 / 9.0,
+        img_width: 400,
+        sample_times: 100,
+        reflect_depth: 50,
+        vfov: 20.0,
+        lookfrom: Vec3::new(0.0, 0.0, 12.0),
+        lookat: Vec3::new(0.0, 0.0, 0.0),
+        vup: Vec3::new(0.0, 1.0, 0.0),
+        focus_dist: 10.0,
+        defocus_angle: 0.0,
+    });
+
+    let mut world = HittableList::new();
+    world.add(ball.clone());
+    cam.render(&world)
+}
+
+fn noise_sphere() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
+    let mut world = HittableList::new();
+    let pertext = Arc::new(NoiseTexture::new());
+    world.add(Arc::new(Sphere::stable_new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(pertext.clone())))));
+    world.add(Arc::new(Sphere::stable_new(Vec3::new(0.0, 2.0, 0.0), 2.0, Arc::new(Lambertian::new(pertext.clone())))));
+    let cam = Camera::new(CameraConfig {
+        ratio: 16.0 / 9.0,
+        img_width: 400,
+        sample_times: 100,
+        reflect_depth: 50,
+        vfov: 20.0,
+        lookfrom: Vec3::new(13.0, 2.0, 3.0),
+        lookat: Vec3::new(0.0, 0.0, 0.0),
+        vup: Vec3::new(0.0, 1.0, 0.0),
+        focus_dist: 10.0,
+        defocus_angle: 0.0,
+    });
+    cam.render(&world)
+}
+
+fn main() {
+    const SCENE: i32 = 4;
+
+    let path = "output/test.jpg";
+    let quality = 60;
 
     println!("Ouput image as \"{}\"\n Author: {}", path, AUTHOR);
-    let output_image: image::DynamicImage = image::DynamicImage::ImageRgb8(img);
+    let output_image: image::DynamicImage = image::DynamicImage::ImageRgb8(
+        match SCENE {
+            1 => bouncing_spheres(),
+            2 => checkered_spheres(),
+            3 => cowball(),
+            4 => noise_sphere(),
+            _ => bouncing_spheres(),
+        }
+    );
     let mut output_file: File = File::create(path).unwrap();
     match output_image.write_to(&mut output_file, image::ImageOutputFormat::Jpeg(quality)) {
         Ok(_) => {}

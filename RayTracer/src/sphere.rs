@@ -4,6 +4,7 @@ use crate::ray::Ray;
 use crate::hittable::{HitRecord, Hittable};
 use crate::utils::{Interval, Vec3};
 use std::sync::Arc;
+use std::f64::consts::PI;
 
 pub struct Sphere {
     p: Vec3,
@@ -14,6 +15,17 @@ pub struct Sphere {
 }
 
 impl Sphere {
+    // p is on a unit sphere centered at the origin
+    fn get_sphere_uv(p: &Vec3) -> (f64, f64) {
+        let theta = (-p.y).acos();
+        let phi = (-p.z).atan2(p.x) + PI;
+
+        (
+            phi / (2.0*PI),
+            theta / PI,
+        )
+    }
+
     pub fn stable_new(center: Vec3, radius: f64, mat: Arc<dyn Material + Sync + Send>) -> Self {
         let p = Vec3::new(radius, radius, radius);
         Self {
@@ -63,12 +75,17 @@ impl Hittable for Sphere {
                     return None;
                 }
             }
+
+            let out_normal = (r.at(root) - center) / self.radius;
+            let (u, v) = Sphere::get_sphere_uv(&out_normal);
             Some(HitRecord::new(
                 r.at(root),
                 root,
-                (r.at(root) - center) / self.radius,
+                out_normal,
                 r,
                 self.mat.clone(),
+                u, 
+                v,
             ))
         }
     }

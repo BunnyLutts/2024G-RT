@@ -18,7 +18,7 @@ pub struct HitRecord {
 }
 
 impl HitRecord {
-    pub fn new(p: Vec3, t: f64, out_normal: Vec3, r: &Ray, mat: Arc<dyn Material + Sync + Send>) -> Self {
+    pub fn new(p: Vec3, t: f64, out_normal: Vec3, r: &Ray, mat: Arc<dyn Material + Sync + Send>, u: f64, v: f64) -> Self {
         let face_out = r.dir.dot(&out_normal) < 0.0;
         let normal = if face_out { out_normal } else { -out_normal };
         Self {
@@ -27,8 +27,8 @@ impl HitRecord {
             t,
             face_out,
             mat,
-            u: 0.0,
-            v: 0.0,
+            u,
+            v,
         }
     }
 }

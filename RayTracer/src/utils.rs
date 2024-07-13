@@ -501,3 +501,96 @@ impl Default for Interval {
         }
     }
 }
+
+const PERLIN_POINT_COUNT: usize = 256;
+pub struct Perlin {
+    // Perlin noise generation parameters
+    randfloat: Vec<f64>,
+    perm_x: Vec<usize>,
+    perm_y: Vec<usize>,
+    perm_z: Vec<usize>,
+}
+
+impl Perlin {
+    pub fn new() -> Self {
+        let mut randfloat = Vec::new();
+        randfloat.resize(PERLIN_POINT_COUNT, 0.0);
+        for i in 0..PERLIN_POINT_COUNT {
+            randfloat[i] = rand01();
+        }
+
+        let perm_x = Self::perlin_generate_perm();
+        let perm_y = Self::perlin_generate_perm();
+        let perm_z = Self::perlin_generate_perm();
+        Self {
+            randfloat,
+            perm_x,
+            perm_y,
+            perm_z,
+        }
+    }
+
+    pub fn noise(&self, p: &Vec3) -> f64 {
+        let (u, v, w) = (
+            p.x - p.x.floor(),
+            p.y - p.y.floor(),
+            p.z - p.z.floor(),
+        );
+        // println!("[{u}, {v}, {w}]");
+
+        let (i, j, k) = (
+            p.x.floor() as i64,
+            p.y.floor() as i64,
+            p.z.floor() as i64,
+        );
+
+        let mut c = [[[0.0; 2]; 2]; 2];
+        for di in 0..2 {
+            for dj in 0..2 {
+                for dk in 0..2 {
+                    c[di][dj][dk] = self.randfloat[
+                        self.perm_x[((di as i64 + i)&255) as usize] ^
+                        self.perm_y[((dj as i64 + j)&255) as usize] ^
+                        self.perm_z[((dk as i64 + k)&255) as usize]
+                    ];
+                }
+            }
+        }
+        Self::trillinear_interp(&c, u, v, w)
+        // c[0][0][0]
+    }
+
+    fn trillinear_interp(c: &[[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+        let mut accum = 0.0;
+        for i in 0..2 {
+            for j in 0..2 {
+                for k in 0..2 {
+                    accum += c[i][j][k]
+                    * (i as f64 * u + (1-i) as f64 * (1.0-u))
+                    * (j as f64 * v + (1-j) as f64 * (1.0-v))
+                    * (k as f64 * w + (1-k) as f64 * (1.0-w));
+                }
+            }
+        }
+        accum
+    }
+
+    fn perlin_generate_perm() -> Vec<usize> {
+        let mut p : Vec<usize> = Vec::new();
+        p.resize(PERLIN_POINT_COUNT, 0);
+        for i in 0..PERLIN_POINT_COUNT {
+            p[i] = i;
+        }
+        Self::permute(&mut p);
+        p
+    }
+
+    fn permute(p: &mut Vec<usize>) {
+        let n = p.len();
+        let mut rng = thread_rng();
+        for i in (1..n).rev() {
+            let target = rng.gen_range(0..=i);
+            p.swap(i, target);
+        }
+    }
+}
