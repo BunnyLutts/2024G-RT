@@ -1,5 +1,5 @@
 use crate::color::write_color;
-use crate::utils;
+use crate::utils::{self, v3};
 use crate::utils::{rand01, Interval, Vec3};
 use crate::hittable::Hittable;
 use image::{ImageBuffer, RgbImage};
@@ -36,22 +36,20 @@ impl Ray {
         self.ori + self.dir * t
     }
 
-    pub fn color<T: Hittable>(&self, world: &T) -> Vec3 {
+    pub fn color<T: Hittable>(&self, world: &T, background: &Vec3) -> Vec3 {
         if self.cnt == 0 {
             return Vec3::zero();
         }
         let t = Interval::new(0.001, f64::INFINITY);
-        if let Some(rec) = world.hit(&self, &t) {
-            return match rec.mat.scatter(self, &rec) {
-                Some(scatter_rec) => scatter_rec.attenuation * scatter_rec.scattered.color(world),
-                None => Vec3::zero(),
-            };
+        match world.hit(&self, &t) {
+            Some(rec) => {
+                rec.mat.emitted(rec.u, rec.v, &rec.p) + match rec.mat.scatter(self, &rec) {
+                    Some(scatter_rec) => scatter_rec.attenuation * scatter_rec.scattered.color(world, background),
+                    None => Vec3::zero(),
+                }
+            }
+            None => background.clone(),
         }
-
-        let blue = Vec3::new(0.5, 0.7, 1.0);
-        let white = Vec3::new(1.0, 1.0, 1.0);
-        let a = 0.5 * (self.dir.normalize().y + 1.0);
-        blue * a + white * (1.0 - a)
     }
 }
 
@@ -67,6 +65,7 @@ pub struct CameraConfig {
     pub reflect_depth: usize,
     pub defocus_angle: f64,
     pub focus_dist: f64,
+    pub background: Vec3,
 }
 
 impl Default for CameraConfig {
@@ -82,6 +81,7 @@ impl Default for CameraConfig {
             vup: Vec3::new(0.0, 1.0, 0.0),
             focus_dist: 10.0,
             defocus_angle: 0.0,
+            background: v3(1.0, 1.0, 1.0),
         }
     }
 }
@@ -103,6 +103,7 @@ pub struct Camera {
     pub vup: Vec3,
     pub defocus_angle: f64,
     pub focus_dist: f64,
+    pub background: Vec3,
 
     camera_center: Vec3,
     pixel00_loc: Vec3,
@@ -175,6 +176,7 @@ impl Camera {
             focus_dist: cfg.focus_dist,
             defocus_disk_u,
             defocus_disk_v,
+            background: cfg.background,
         }
     }
 
@@ -214,7 +216,7 @@ impl Camera {
             for i in 0..self.image_width {
                 let color: Vec3 = (0..self.sample_times)
                     .into_par_iter()
-                    .map(|_| self.get_ray(i as f64, j as f64).color(world))
+                    .map(|_| self.get_ray(i as f64, j as f64).color(world, &self.background))
                     .sum::<Vec3>()
                     * self.sample_scale;
                 write_color(color.rgb(), &mut img, i, j);

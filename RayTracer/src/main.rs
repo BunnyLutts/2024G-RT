@@ -73,6 +73,7 @@ fn bouncing_spheres() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
         vup: Vec3::new(0.0, 1.0, 0.0),
         focus_dist: 10.0,
         defocus_angle: 0.6,
+        background: v3(0.7, 0.8, 1.0),
     });
 
     camera.render(&world)
@@ -97,6 +98,7 @@ fn checkered_spheres() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
         vup: Vec3::new(0.0, 1.0, 0.0),
         focus_dist: 10.0,
         defocus_angle: 0.0,
+        background: v3(0.7, 0.8, 1.0),
     });
 
     cam.render(&world)
@@ -118,6 +120,7 @@ fn cowball() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
         vup: Vec3::new(0.0, 1.0, 0.0),
         focus_dist: 10.0,
         defocus_angle: 0.0,
+        background: v3(0.7, 0.8, 1.0),
     });
 
     let mut world = HittableList::new();
@@ -141,6 +144,7 @@ fn noise_sphere() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
         vup: Vec3::new(0.0, 1.0, 0.0),
         focus_dist: 10.0,
         defocus_angle: 0.0,
+        background: v3(0.7, 0.8, 1.0),
     });
     cam.render(&world)
 }
@@ -189,10 +193,6 @@ fn quads() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
         lower_teal.clone(),
     )));
 
-    let r = ray::Ray::new(v3(0.0, 0.0, 9.0), v3(0.0, -1.0, -2.0), 0.0, 100);
-    let co = r.color(&world);
-    println!("{}, {}, {}", co.x, co.y, co.z);
-
     let cam = Camera::new(CameraConfig {
         ratio: 1.0,
         img_width: 400,
@@ -204,13 +204,74 @@ fn quads() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
         vup: Vec3::new(0.0, 1.0, 0.0),
         focus_dist: 10.0,
         defocus_angle: 0.0,
+        background: v3(0.7, 0.8, 1.0),
+    });
+
+    cam.render(&world)
+}
+
+fn simple_light() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>>{
+    let mut world = HittableList::new();
+
+    let pertext = Arc::new(NoiseTexture::new(4.0));
+    world.add(Arc::new(Sphere::stable_new(v3(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::new(pertext.clone())))));
+    world.add(Arc::new(Sphere::stable_new(v3(0.0, 2.0, 0.0), 2.0, Arc::new(Lambertian::new(pertext.clone())))));
+
+    let difflight = Arc::new(DiffuseLight::from(v3(4.0, 4.0, 4.0)));
+    world.add(Arc::new(Sphere::stable_new(v3(0.0, 7.0, 0.0), 2.0, difflight.clone())));
+    world.add(Arc::new(Quad::new(v3(3.0, 1.0, -2.0), v3(2.0, 0.0, 0.0), v3(0.0, 2.0, 0.0), difflight.clone())));
+
+    let cam = Camera::new(CameraConfig {
+        ratio: 16.0 / 9.0,
+        img_width: 400,
+        sample_times: 100,
+        reflect_depth: 50,
+        vfov: 20.0,
+        lookfrom: Vec3::new(26.0, 3.0, 6.0),
+        lookat: Vec3::new(0.0, 2.0, 0.0),
+        vup: Vec3::new(0.0, 1.0, 0.0),
+        focus_dist: 10.0,
+        defocus_angle: 0.0,
+        background: v3(0.0, 0.0, 0.0),
+    });
+
+    cam.render(&world)
+}
+
+fn cornell_box() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
+    let mut world = HittableList::new();
+
+    let red = Arc::new(Lambertian::from(v3(0.65, 0.05, 0.05)));
+    let white = Arc::new(Lambertian::from(v3(0.73, 0.73, 0.73)));
+    let green = Arc::new(Lambertian::from(v3(0.12, 0.45, 0.15)));
+    let light = Arc::new(DiffuseLight::from(v3(15.0, 15.0, 15.0)));
+
+    world.add(Arc::new(Quad::new(v3(555.0, 0.0, 0.0), v3(0.0, 555.0, 0.0), v3(0.0, 0.0, 555.0), green.clone())));
+    world.add(Arc::new(Quad::new(v3(0.0, 0.0, 0.0), v3(0.0, 555.0, 0.0), v3(0.0, 0.0, 555.0), red.clone())));
+    world.add(Arc::new(Quad::new(v3(343.0, 554.0, 332.0), v3(-130.0, 0.0, 0.0), v3(0.0, 0.0, -105.0), light.clone())));
+    world.add(Arc::new(Quad::new(v3(0.0, 0.0, 0.0), v3(555.0, 0.0, 0.0), v3(0.0, 0.0, 555.0), white.clone())));
+    world.add(Arc::new(Quad::new(v3(555.0, 555.0, 555.0), v3(-555.0, 0.0, 0.0), v3(0.0, 0.0, -555.0), white.clone())));
+    world.add(Arc::new(Quad::new(v3(0.0, 0.0, 555.0), v3(555.0, 0.0, 0.0), v3(0.0, 555.0, 0.0), white.clone())));
+
+    let cam = Camera::new(CameraConfig {
+        ratio: 1.0,
+        img_width: 600,
+        sample_times: 200,
+        reflect_depth: 50,
+        background: v3(0.0, 0.0, 0.0),
+        vfov: 40.0,
+        lookfrom: Vec3::new(278.0, 278.0, -800.0),
+        lookat: Vec3::new(278.0, 278.0, 0.0),
+        vup: Vec3::new(0.0, 1.0, 0.0),
+        focus_dist: 10.0,
+        defocus_angle: 0.0,
     });
 
     cam.render(&world)
 }
 
 fn main() {
-    const SCENE: i32 = 5;
+    const SCENE: i32 = 7;
 
     let path = "output/test.jpg";
     let quality = 60;
@@ -223,6 +284,8 @@ fn main() {
             3 => cowball(),
             4 => noise_sphere(),
             5 => quads(),
+            6 => simple_light(),
+            7 => cornell_box(),
             _ => bouncing_spheres(),
         }
     );

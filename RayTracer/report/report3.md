@@ -19,3 +19,48 @@
 ## 柏林噪声
 
 运用柏林噪声生成类似大理石的纹理。
+
+## 平面图形
+
+对于一个物体，主要要解决的问题是如何判断光线在何处相交。
+
+对于一个平面，如果我们知道平面一点$\bold{Q}$,法向量$\bold{n}$,则光线$\bold{O} + t\bold{d}$有
+
+$$
+(\bold{O} + t\bold{d} - \bold{Q}) \cdot \bold{n} =0 \\
+\Rightarrow
+t = \frac{(\bold{O} - \bold{Q}) \cdot \bold{n}}{\bold{d} \cdot \bold{n}}
+$$
+
+法向量可以由两个平面内向量$\bold{u}, \bold{v}$叉乘得到
+
+$$
+\bold{n} = \bold{u} \times \bold{v}
+$$
+
+我们想把焦点$\bold{P}$用$\bold{Q}, \bold{u},\bold{v}$表示，得到二维坐标.
+
+$$
+\bold{p} = \bold{P} - \bold{Q} = \alpha \bold{u} + \beta \bold{v} \\
+\Rightarrow
+\begin{cases}
+\bold{p} \times \bold{u} = \beta \bold{v} \times \bold{u} \\
+\bold{p} \times \bold{v} = \alpha \bold{u} \times \bold{v}
+\end{cases} \\
+\Rightarrow
+\begin{cases}
+\bold{n} \cdot (\bold{p} \times \bold{u}) 
+= \beta \bold{n} \cdot (\bold{v} \times \bold{u}) 
+= -\beta \bold{n} \cdot \bold{n}\\
+\bold{n} \cdot (\bold{p} \times \bold{v})
+= \alpha \bold{n} \cdot (\bold{u} \times \bold{v})
+= \alpha \bold{n} \cdot \bold{n}
+\end{cases} \\
+\Rightarrow
+\begin{cases}
+\alpha = \frac{\bold{n} \cdot (\bold{p} \times \bold{v})}{\bold{n} \cdot \bold{n}} \\
+\beta = \frac{\bold{n} \cdot (\bold{u} \times \bold{p})}{\bold{n} \cdot \bold{n}}
+\end{cases}
+$$
+
+对于平面一点是否位于图形内部，判断其平面坐标即可。
