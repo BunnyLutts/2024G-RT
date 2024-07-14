@@ -1,3 +1,4 @@
+use std::ops::Add;
 use crate::utils::{Vec3, Interval};
 use crate::ray::Ray;
 
@@ -83,6 +84,28 @@ impl Default for AABB {
             y: Interval::new(f64::INFINITY, f64::NEG_INFINITY),
             z: Interval::new(f64::INFINITY, f64::NEG_INFINITY),
         }
+    }
+}
+
+impl Add<Vec3> for AABB {
+    type Output = AABB;
+    fn add(self, other: Vec3) -> Self::Output { 
+        AABB::new(
+            self.x + other.x,
+            self.y + other.y,
+            self.z + other.z,
+        )
+    }
+}
+
+impl Add<AABB> for Vec3 {
+    type Output = AABB;
+    fn add(self, rhs: AABB) -> Self::Output {
+        AABB::new(
+            self.x + rhs.x,
+            self.y + rhs.y,
+            self.z + rhs.z,
+        )
     }
 }
 

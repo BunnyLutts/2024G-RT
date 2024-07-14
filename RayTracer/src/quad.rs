@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::aabb::AABB; 
-use crate::hittable::{Hittable, HitRecord};
-use crate::utils::{Vec3, Interval}; 
+use crate::hittable::{HitRecord, Hittable, HittableList};
+use crate::utils::{v3, Interval, Vec3}; 
 use crate::ray::Ray;
 use crate::Material;
 
@@ -82,4 +82,24 @@ impl Hittable for Quad {
     fn bounding_box(&self) -> AABB {
         self.bbox.clone()
     }
+}
+
+pub fn makebox(a: &Vec3, b: &Vec3, mat: Arc<dyn Material + Send + Sync>) -> Arc<dyn Hittable + Send + Sync> {
+    let mut sides = HittableList::new();
+
+    let min = v3(a.x.min(b.x), a.y.min(b.y), a.z.min(b.z));
+    let max = v3(a.x.max(b.x), a.y.max(b.y), a.z.max(b.z));
+
+    let dx = v3(max.x - min.x, 0.0, 0.0);
+    let dy = v3(0.0, max.y - min.y, 0.0);
+    let dz = v3(0.0, 0.0, max.z - min.z);
+
+    sides.add(Arc::new(Quad::new(v3(min.x, min.y, max.z), dx, dy, mat.clone())));   // front
+    sides.add(Arc::new(Quad::new(v3(max.x, min.y, max.z), -dz, dy, mat.clone())));  // right
+    sides.add(Arc::new(Quad::new(v3(max.x, min.y, min.z), -dx, dy, mat.clone())));  // back
+    sides.add(Arc::new(Quad::new(v3(min.x, min.y, min.z), dz, dy, mat.clone())));   // left
+    sides.add(Arc::new(Quad::new(v3(min.x, max.y, max.z), dx, -dz, mat.clone())));  // top
+    sides.add(Arc::new(Quad::new(v3(min.x, min.y, min.z), dx, dz, mat.clone())));   // bottom
+
+    Arc::new(sides)
 }
