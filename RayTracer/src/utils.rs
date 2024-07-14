@@ -294,6 +294,10 @@ impl Sum for Vec3 {
     }
 }
 
+pub fn v3(x: f64, y: f64, z: f64) -> Vec3 {
+    Vec3::new(x, y, z)
+}
+
 #[cfg(test)]
 mod tests_vec3 {
     use super::*;

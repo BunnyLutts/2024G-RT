@@ -1,19 +1,20 @@
 mod color;
 mod utils;
 mod ray;
-mod sphere;
-mod material;
 mod aabb;
 mod hittable;
+mod material;
 mod texture;
+mod sphere;
+mod quad;
 
 use crate::hittable::{HittableList, BVHNode};
-use crate::sphere::Sphere;
-use crate::utils::Vec3;
+use crate::utils::{Vec3, rand01, v3};
 use crate::material::*;
 use crate::texture::*;
-use ray::{Camera, CameraConfig};
-use utils::rand01;
+use crate::ray::{Camera, CameraConfig};
+use crate::sphere::Sphere;
+use crate::quad::Quad;
 use std::fs::File;
 use std::sync::Arc;
 
@@ -102,7 +103,7 @@ fn checkered_spheres() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
 }
 
 fn cowball() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
-    let texture = Arc::new(ImageTexture::load("image/cow.png").unwrap());
+    let texture = Arc::new(ImageTexture::load("image/earthmap.jpeg").unwrap());
     let sufrace = Arc::new(Lambertian::new(texture.clone()));
     let ball = Arc::new(Sphere::stable_new(Vec3::new(0.0, 0.0, 0.0), 2.0, sufrace.clone()));
 
@@ -144,8 +145,72 @@ fn noise_sphere() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
     cam.render(&world)
 }
 
+fn quads() -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
+    let mut world = HittableList::new();
+
+    let left_red = Arc::new(Lambertian::from(v3(1.0, 0.2, 0.2)));
+    let back_green = Arc::new(Lambertian::from(v3(0.2, 1.0, 0.2)));
+    let right_blue = Arc::new(Lambertian::from(v3(0.2, 0.2, 1.0)));
+    let upper_orange = Arc::new(Lambertian::from(v3(1.0, 0.5, 0.0)));
+    let lower_teal = Arc::new(Lambertian::from(v3(0.2, 0.8, 0.8)));
+
+    world.add(Arc::new(Quad::new(
+        v3(-3.0, -2.0, 5.0),
+        v3(0.0, 0.0, -4.0),
+        v3(0.0, 4.0, 0.0),
+        left_red.clone(),
+    )));
+
+    world.add(Arc::new(Quad::new(
+        v3(-2.0, -2.0, 0.0),
+        v3(4.0, 0.0, 0.0),
+        v3(0.0, 4.0, 0.0),
+        back_green.clone(),
+    )));
+
+    world.add(Arc::new(Quad::new(
+        v3(3.0, -2.0, 1.0),
+        v3(0.0, 0.0, 4.0),
+        v3(0.0, 4.0, 0.0),
+        right_blue.clone(),
+    )));
+
+    world.add(Arc::new(Quad::new(
+        v3(-2.0, 3.0, 1.0),
+        v3(4.0, 0.0, 0.0),
+        v3(0.0, 0.0, 4.0),
+        upper_orange.clone(),
+    )));
+
+    world.add(Arc::new(Quad::new(
+        v3(-2.0, -3.0, 5.0),
+        v3(4.0, 0.0, 0.0),
+        v3(0.0, 0.0, -4.0),
+        lower_teal.clone(),
+    )));
+
+    let r = ray::Ray::new(v3(0.0, 0.0, 9.0), v3(0.0, -1.0, -2.0), 0.0, 100);
+    let co = r.color(&world);
+    println!("{}, {}, {}", co.x, co.y, co.z);
+
+    let cam = Camera::new(CameraConfig {
+        ratio: 1.0,
+        img_width: 400,
+        sample_times: 100,
+        reflect_depth: 100,
+        vfov: 80.0,
+        lookfrom: Vec3::new(0.0, 0.0, 9.0),
+        lookat: Vec3::new(0.0, 0.0, 0.0),
+        vup: Vec3::new(0.0, 1.0, 0.0),
+        focus_dist: 10.0,
+        defocus_angle: 0.0,
+    });
+
+    cam.render(&world)
+}
+
 fn main() {
-    const SCENE: i32 = 4;
+    const SCENE: i32 = 5;
 
     let path = "output/test.jpg";
     let quality = 60;
@@ -157,6 +222,7 @@ fn main() {
             2 => checkered_spheres(),
             3 => cowball(),
             4 => noise_sphere(),
+            5 => quads(),
             _ => bouncing_spheres(),
         }
     );

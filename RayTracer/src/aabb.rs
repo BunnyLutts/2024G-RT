@@ -9,23 +9,38 @@ pub struct AABB {
 }
 
 impl AABB {
+    fn pad_to_mininums(&mut self) {
+        const DELTA: f64 = 0.0001;
+        if self.x.len() < DELTA {
+            self.x = self.x.expand(DELTA);
+        }
+        if self.y.len() < DELTA {
+            self.y = self.y.expand(DELTA);
+        }
+        if self.z.len() < DELTA {
+            self.z = self.z.expand(DELTA);
+        }
+    }
+
     pub fn new(x: Interval, y: Interval, z: Interval) -> Self {
-        Self { x, y, z }
+        let mut obj = Self { x, y, z };
+        obj.pad_to_mininums();
+        obj
     }
 
     pub fn by_two_points(p0: Vec3, p1: Vec3) -> Self {
         let x = Interval::new(p0.x.min(p1.x), p0.x.max(p1.x));
         let y = Interval::new(p0.y.min(p1.y), p0.y.max(p1.y));
         let z = Interval::new(p0.z.min(p1.z), p0.z.max(p1.z));
-        Self { x, y, z, }
+        Self::new(x, y, z)
     }
 
     pub fn combine(&self, other: &AABB) -> Self {
-        Self {
-            x: self.x.combine(&other.x),
-            y: self.y.combine(&other.y),
-            z: self.z.combine(&other.z),
-        }
+        Self::new(
+            self.x.combine(&other.x),
+            self.y.combine(&other.y),
+            self.z.combine(&other.z),
+        )
     }
 
     fn hit_interval(ori: f64, dir: f64, r_t: &Interval, tar: &Interval) -> Interval {
