@@ -20,3 +20,9 @@
 
 这张照片则尝试渲染一张水晶球的照片，其中基座是四边形和木质纹理贴图，球体是玻璃材质，球内随机生成若干点光源。
 ![lamp_starry](lamp_starry.jpg "Starry lamp")
+
+## Changing multi-threading
+
+把多线程库从Rayon迁移至Crossbeam,将同一点并发采样改为并发对所有像素采样。
+
+用Week2 Final Scene测试，两者均耗时4.5h,效率无明显差异。
