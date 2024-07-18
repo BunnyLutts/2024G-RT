@@ -1,0 +1,2 @@
+time target/release/ray_tracer_lamp_starry
+time target/release/ray_tracer_lamp_noise

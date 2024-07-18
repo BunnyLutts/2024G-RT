@@ -1,8 +1,8 @@
-use std::sync::Arc;
-use crate::texture::{SolidColor, Texture};
-use crate::ray::Ray;
 use crate::hittable::{HitRecord, Hittable};
+use crate::ray::Ray;
+use crate::texture::{SolidColor, Texture};
 use crate::utils::{rand01, v3, Vec3};
+use std::sync::Arc;
 
 pub struct ScatterRec {
     pub attenuation: Vec3,
@@ -11,7 +11,10 @@ pub struct ScatterRec {
 
 impl ScatterRec {
     pub fn new(attenuation: Vec3, scattered: Ray) -> Self {
-        Self { attenuation, scattered }
+        Self {
+            attenuation,
+            scattered,
+        }
     }
 }
 
@@ -31,11 +34,13 @@ pub struct Lambertian {
 
 impl Lambertian {
     pub fn new(tex: Arc<dyn Texture + Send + Sync>) -> Self {
-        Self { tex, }
+        Self { tex }
     }
 
     pub fn from(albedo: Vec3) -> Self {
-        Self { tex: Arc::new(SolidColor::new(albedo)) }
+        Self {
+            tex: Arc::new(SolidColor::new(albedo)),
+        }
     }
 }
 
@@ -59,13 +64,14 @@ pub struct Metal {
 
 impl Metal {
     pub fn new(albedo: Vec3, fuzz: f64) -> Self {
-        Self { albedo, fuzz, }
+        Self { albedo, fuzz }
     }
 }
 
 impl Material for Metal {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterRec> {
-        let reflected = ray_in.dir.reflect(&hit_record.normal).normalize() + self.fuzz * Vec3::random_unit();
+        let reflected =
+            ray_in.dir.reflect(&hit_record.normal).normalize() + self.fuzz * Vec3::random_unit();
         if reflected.dot(&hit_record.normal) > 0.0 {
             Some(ScatterRec::new(
                 self.albedo,
@@ -91,7 +97,7 @@ impl Dielectric {
     fn reflectance(cosine: f64, refraction_index: f64) -> f64 {
         // Use Schlick's approximation for reflectance.
         let mut r0 = (1.0 - refraction_index) / (1.0 + refraction_index);
-        r0 = r0*r0;
+        r0 = r0 * r0;
         r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
     }
 }
@@ -107,9 +113,9 @@ impl Material for Dielectric {
         let unit_dir = ray_in.dir.normalize();
 
         let cos_theta = (-unit_dir.dot(&hit_record.normal)).min(1.0);
-        let sin_theta = (1.0-cos_theta*cos_theta).sqrt();
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
-        let direction = if ri*sin_theta > 1.0 || Self::reflectance(cos_theta, ri) > rand01() {
+        let direction = if ri * sin_theta > 1.0 || Self::reflectance(cos_theta, ri) > rand01() {
             unit_dir.reflect(&hit_record.normal)
         } else {
             unit_dir.refract(&hit_record.normal, ri)
@@ -127,11 +133,13 @@ pub struct DiffuseLight {
 
 impl DiffuseLight {
     pub fn new(tex: Arc<dyn Texture + Send + Sync>) -> Self {
-        Self { tex, }
+        Self { tex }
     }
 
     pub fn from(color: Vec3) -> Self {
-        Self { tex: Arc::new(SolidColor::new(color)) }
+        Self {
+            tex: Arc::new(SolidColor::new(color)),
+        }
     }
 }
 
@@ -147,17 +155,19 @@ pub struct Isotropic {
 
 impl Isotropic {
     pub fn new(tex: Arc<dyn Texture + Send + Sync>) -> Self {
-        Self { tex, }
+        Self { tex }
     }
 
     pub fn from(color: Vec3) -> Self {
-        Self { tex: Arc::new(SolidColor::new(color)) }
+        Self {
+            tex: Arc::new(SolidColor::new(color)),
+        }
     }
 }
 
 impl Material for Isotropic {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterRec> {
-        Some(ScatterRec{
+        Some(ScatterRec {
             scattered: ray_in.update(hit_record.p, Vec3::random_unit()),
             attenuation: self.tex.value(hit_record.u, hit_record.v, &hit_record.p),
         })

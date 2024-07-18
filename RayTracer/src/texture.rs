@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use crate::utils::{Interval, Perlin, Vec3};
 use image::{io::Reader, RgbImage};
-use crate::utils::{Interval, Vec3, Perlin};
+use std::sync::Arc;
 
 pub trait Texture {
     fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3;
@@ -12,7 +12,7 @@ pub struct SolidColor {
 
 impl SolidColor {
     pub fn new(albedo: Vec3) -> Self {
-        Self { albedo, }
+        Self { albedo }
     }
 
     pub fn from(r: f64, g: f64, b: f64) -> Self {
@@ -33,7 +33,11 @@ pub struct CheckerTexture {
 }
 
 impl CheckerTexture {
-    pub fn new(inv_scale: f64, even: Arc<dyn Texture + Send + Sync>, odd: Arc<dyn Texture + Send + Sync>) -> Self {
+    pub fn new(
+        inv_scale: f64,
+        even: Arc<dyn Texture + Send + Sync>,
+        odd: Arc<dyn Texture + Send + Sync>,
+    ) -> Self {
         Self {
             inv_scale,
             even,
@@ -58,7 +62,7 @@ impl Texture for CheckerTexture {
             (self.inv_scale * p.z).floor() as i64,
         );
 
-        match (xgrid+ygrid+zgrid) % 2 {
+        match (xgrid + ygrid + zgrid) % 2 {
             0 => self.even.value(u, v, p),
             _ => self.odd.value(u, v, p),
         }
@@ -71,16 +75,14 @@ pub struct ImageTexture {
 
 impl ImageTexture {
     pub fn new(img: RgbImage) -> Self {
-        Self {img,}
+        Self { img }
     }
 
     pub fn load(filename: &str) -> Result<Self, &str> {
         let img = match Reader::open(filename) {
-            Ok(r) => {
-                match r.decode() {
-                    Ok(img) => img,
-                    Err(_) => return Err("Error decoding image file"),
-                }
+            Ok(r) => match r.decode() {
+                Ok(img) => img,
+                Err(_) => return Err("Error decoding image file"),
             },
             Err(_) => return Err("Error opening image file"),
         };
@@ -97,8 +99,8 @@ impl Texture for ImageTexture {
         let u = unit.clamp(u);
         let v = 1.0 - unit.clamp(v);
 
-        let i = (u * (self.img.width()-1) as f64).floor() as u32;
-        let j = (v * (self.img.height()-1) as f64).floor() as u32;
+        let i = (u * (self.img.width() - 1) as f64).floor() as u32;
+        let j = (v * (self.img.height() - 1) as f64).floor() as u32;
         let pixel = self.img.get_pixel(i, j);
 
         const COLOR_SCALE: f64 = 1.0 / 255.0;
@@ -113,15 +115,18 @@ pub struct NoiseTexture {
 
 impl NoiseTexture {
     pub fn new(scale: f64) -> Self {
-        Self { noise: Perlin::new(),  scale,}
+        Self {
+            noise: Perlin::new(),
+            scale,
+        }
     }
 }
-
 
 impl Texture for NoiseTexture {
     fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
         // Vec3::ones() * 0.5 * (1.0 + self.noise.noise(&(self.scale * *p)))
-        Vec3::new(0.5, 0.5, 0.5) * (1.0 + (self.scale * p.z + 10.0 * self.noise.turb(p.clone(), 7)).sin())
+        Vec3::new(0.5, 0.5, 0.5)
+            * (1.0 + (self.scale * p.z + 10.0 * self.noise.turb(p.clone(), 7)).sin())
     }
 }
 
@@ -134,7 +139,11 @@ mod test {
         let img = ImageTexture::load("image/earthmap.jpeg").unwrap();
         for i in 0..img.img.width() {
             for j in 0..img.img.height() {
-                let pixel = img.value(i as f64 / (img.img.width()-1) as f64, j as f64 / (img.img.height()-1) as f64, &Vec3::new(0.0, 0.0, 0.0));
+                let pixel = img.value(
+                    i as f64 / (img.img.width() - 1) as f64,
+                    j as f64 / (img.img.height() - 1) as f64,
+                    &Vec3::new(0.0, 0.0, 0.0),
+                );
                 println!("{:?}", pixel);
             }
         }

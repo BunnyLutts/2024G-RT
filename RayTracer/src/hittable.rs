@@ -303,7 +303,7 @@ impl Hittable for RotationY {
                     rec.normal.y,
                     self.sin_theta * rec.normal.x + self.cos_theta * rec.normal.z,
                 ),
-               ..rec
+                ..rec
             }),
             None => None,
         }

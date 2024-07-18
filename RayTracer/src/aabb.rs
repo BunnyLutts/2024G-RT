@@ -1,6 +1,6 @@
-use std::ops::Add;
-use crate::utils::{Vec3, Interval};
 use crate::ray::Ray;
+use crate::utils::{Interval, Vec3};
+use std::ops::Add;
 
 #[derive(Debug, Clone)]
 pub struct AABB {
@@ -89,34 +89,26 @@ impl Default for AABB {
 
 impl Add<Vec3> for AABB {
     type Output = AABB;
-    fn add(self, other: Vec3) -> Self::Output { 
-        AABB::new(
-            self.x + other.x,
-            self.y + other.y,
-            self.z + other.z,
-        )
+    fn add(self, other: Vec3) -> Self::Output {
+        AABB::new(self.x + other.x, self.y + other.y, self.z + other.z)
     }
 }
 
 impl Add<AABB> for Vec3 {
     type Output = AABB;
     fn add(self, rhs: AABB) -> Self::Output {
-        AABB::new(
-            self.x + rhs.x,
-            self.y + rhs.y,
-            self.z + rhs.z,
-        )
+        AABB::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{sphere::Sphere, utils::Interval};
+    use crate::hittable::{HitRecord, Hittable};
     use crate::ray::Ray;
-    use crate::Lambertian;
     use crate::utils::Vec3;
+    use crate::Lambertian;
+    use crate::{sphere::Sphere, utils::Interval};
     use std::sync::Arc;
-    use crate::hittable::{Hittable, HitRecord};
 
     use super::AABB;
 
@@ -132,7 +124,11 @@ mod tests {
 
     #[test]
     fn test_aabb_sphere_hit() {
-        let sphere = Sphere::stable_new(Vec3::new(0.0, 0.0, 0.0), 1.0, Arc::new(Lambertian::from(Vec3::new(0.8, 0.3, 0.3))));
+        let sphere = Sphere::stable_new(
+            Vec3::new(0.0, 0.0, 0.0),
+            1.0,
+            Arc::new(Lambertian::from(Vec3::new(0.8, 0.3, 0.3))),
+        );
         let aabb = sphere.bounding_box();
         let o = Vec3::new(0.0, 0.0, -5.0);
         let inft = Interval::new(0.0, f64::INFINITY);
@@ -146,7 +142,11 @@ mod tests {
 
     #[test]
     fn test_aabb_sphere_hit_para() {
-        let sphere = Sphere::stable_new(Vec3::new(0.0, 0.0, 0.0), 1.0, Arc::new(Lambertian::from(Vec3::new(0.8, 0.3, 0.3))));
+        let sphere = Sphere::stable_new(
+            Vec3::new(0.0, 0.0, 0.0),
+            1.0,
+            Arc::new(Lambertian::from(Vec3::new(0.8, 0.3, 0.3))),
+        );
         let aabb = sphere.bounding_box();
         let o = Vec3::new(0.0, 0.0, -5.0);
         let inft = Interval::new(0.0, f64::INFINITY);

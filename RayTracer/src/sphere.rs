@@ -1,10 +1,10 @@
 use crate::aabb::AABB;
+use crate::hittable::{HitRecord, Hittable};
 use crate::material::Material;
 use crate::ray::Ray;
-use crate::hittable::{HitRecord, Hittable};
 use crate::utils::{Interval, Vec3};
-use std::sync::Arc;
 use std::f64::consts::PI;
+use std::sync::Arc;
 
 pub struct Sphere {
     p: Vec3,
@@ -20,10 +20,7 @@ impl Sphere {
         let theta = (-p.y).acos();
         let phi = (-p.z).atan2(p.x) + PI;
 
-        (
-            phi / (2.0*PI),
-            theta / PI,
-        )
+        (phi / (2.0 * PI), theta / PI)
     }
 
     pub fn stable_new(center: Vec3, radius: f64, mat: Arc<dyn Material + Sync + Send>) -> Self {
@@ -40,7 +37,7 @@ impl Sphere {
     pub fn new(p: Vec3, v: Vec3, radius: f64, mat: Arc<dyn Material + Sync + Send>) -> Self {
         let r = Vec3::new(radius, radius, radius);
         let bbox1 = AABB::by_two_points(p - r, p + r);
-        let bbox2 = AABB::by_two_points(p+v-r, p+v+r);
+        let bbox2 = AABB::by_two_points(p + v - r, p + v + r);
         Self {
             p,
             v,
@@ -84,7 +81,7 @@ impl Hittable for Sphere {
                 out_normal,
                 r,
                 self.mat.clone(),
-                u, 
+                u,
                 v,
             ))
         }
@@ -93,4 +90,8 @@ impl Hittable for Sphere {
     fn bounding_box(&self) -> AABB {
         self.bbox.clone()
     }
+}
+
+pub fn make_sphere(center: Vec3, radius: f64, mat: Arc<dyn Material + Send + Sync>) -> Arc<dyn Hittable + Send + Sync> {
+    Arc::new(Sphere::stable_new(center, radius, mat))
 }

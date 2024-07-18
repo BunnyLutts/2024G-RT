@@ -74,7 +74,7 @@ impl Hittable for ConstantMedium {
             );
         }
 
-        Some(HitRecord{
+        Some(HitRecord {
             p,
             normal: Vec3::ones(),
             t,

@@ -3,8 +3,12 @@ use rand::{
     distributions::{Open01, Uniform},
     thread_rng, Rng,
 };
-use std::{iter::Sum, mem::swap, ops::{Add, AddAssign}};
 use std::cmp::Ordering;
+use std::{
+    iter::Sum,
+    mem::swap,
+    ops::{Add, AddAssign},
+};
 
 pub fn is_ci() -> bool {
     option_env!("CI").unwrap_or_default() == "true"
@@ -23,30 +27,39 @@ pub fn linear_to_gamma(x: f64) -> f64 {
 }
 
 // Sorting by quicksort
-pub fn inplace_sort<T>(v: &mut Vec<T>, begin: usize, end: usize, cmp_fn: &impl Fn(&T, &T) -> std::cmp::Ordering) {
+pub fn inplace_sort<T>(
+    v: &mut Vec<T>,
+    begin: usize,
+    end: usize,
+    cmp_fn: &impl Fn(&T, &T) -> std::cmp::Ordering,
+) {
     if end - begin < 2 {
-        return; 
+        return;
     }
 
     let pivot_index = partition(v, begin, end, cmp_fn);
-    inplace_sort(v, begin, pivot_index, cmp_fn); 
-    inplace_sort(v, pivot_index + 1, end, cmp_fn); 
+    inplace_sort(v, begin, pivot_index, cmp_fn);
+    inplace_sort(v, pivot_index + 1, end, cmp_fn);
 }
 
-fn partition<T>(v: &mut Vec<T>, begin: usize, end: usize, cmp_fn: &impl Fn(&T, &T) -> std::cmp::Ordering) -> usize {
+fn partition<T>(
+    v: &mut Vec<T>,
+    begin: usize,
+    end: usize,
+    cmp_fn: &impl Fn(&T, &T) -> std::cmp::Ordering,
+) -> usize {
     let p = thread_rng().gen_range(begin..end);
-    v.swap(p, end - 1);  
+    v.swap(p, end - 1);
     let mut i = begin;
     for j in begin..end - 1 {
-        if cmp_fn(&v[j], &v[end-1]) != std::cmp::Ordering::Greater {
+        if cmp_fn(&v[j], &v[end - 1]) != std::cmp::Ordering::Greater {
             v.swap(i, j);
             i += 1;
         }
     }
-    v.swap(i, end - 1); 
-    i 
+    v.swap(i, end - 1);
+    i
 }
-
 
 #[cfg(test)]
 mod tests_sort {
@@ -155,7 +168,7 @@ impl Vec3 {
 
     pub fn random_in_unit_disk() -> Self {
         loop {
-            let v = Self::new(rand01()*2.0-1.0, rand01()*2.0-1.0, 0.0);
+            let v = Self::new(rand01() * 2.0 - 1.0, rand01() * 2.0 - 1.0, 0.0);
             if v.squared_length() < 1.0 {
                 return v;
             }
@@ -492,7 +505,7 @@ impl Interval {
         Self::new(self.min - delta, self.max + delta)
     }
 
-    pub fn intersect(&self, other: &Interval) -> Interval{
+    pub fn intersect(&self, other: &Interval) -> Interval {
         Interval::new(self.min.max(other.min), self.max.min(other.max))
     }
 }
@@ -509,14 +522,20 @@ impl Default for Interval {
 impl Add<f64> for Interval {
     type Output = Interval;
     fn add(self, rhs: f64) -> Self::Output {
-        Interval{min: self.min + rhs, max: self.max + rhs}
+        Interval {
+            min: self.min + rhs,
+            max: self.max + rhs,
+        }
     }
 }
 
 impl Add<Interval> for f64 {
     type Output = Interval;
     fn add(self, rhs: Interval) -> Self::Output {
-        Interval{min: self + rhs.min, max: self + rhs.max}
+        Interval {
+            min: self + rhs.min,
+            max: self + rhs.max,
+        }
     }
 }
 
@@ -550,28 +569,18 @@ impl Perlin {
     }
 
     pub fn noise(&self, p: &Vec3) -> f64 {
-        let (mut u, mut v, mut w) = (
-            p.x - p.x.floor(),
-            p.y - p.y.floor(),
-            p.z - p.z.floor(),
-        );
+        let (mut u, mut v, mut w) = (p.x - p.x.floor(), p.y - p.y.floor(), p.z - p.z.floor());
         // println!("[{u}, {v}, {w}]");
 
-        let (i, j, k) = (
-            p.x.floor() as i64,
-            p.y.floor() as i64,
-            p.z.floor() as i64,
-        );
+        let (i, j, k) = (p.x.floor() as i64, p.y.floor() as i64, p.z.floor() as i64);
 
         let mut c = [[[Vec3::zero(); 2]; 2]; 2];
         for di in 0..2 {
             for dj in 0..2 {
                 for dk in 0..2 {
-                    c[di][dj][dk] = self.randvec[
-                        self.perm_x[((di as i64 + i)&255) as usize] ^
-                        self.perm_y[((dj as i64 + j)&255) as usize] ^
-                        self.perm_z[((dk as i64 + k)&255) as usize]
-                    ];
+                    c[di][dj][dk] = self.randvec[self.perm_x[((di as i64 + i) & 255) as usize]
+                        ^ self.perm_y[((dj as i64 + j) & 255) as usize]
+                        ^ self.perm_z[((dk as i64 + k) & 255) as usize]];
                 }
             }
         }
@@ -595,9 +604,9 @@ impl Perlin {
 
     fn perlin_interp(c: &[[[Vec3; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
         let (uu, vv, ww) = (
-            u*u*(3.0 - 2.0 * u),
-            v*v*(3.0 - 2.0 * v),
-            w*w*(3.0 - 2.0 * w),
+            u * u * (3.0 - 2.0 * u),
+            v * v * (3.0 - 2.0 * v),
+            w * w * (3.0 - 2.0 * w),
         );
         let mut accum = 0.0;
         for i in 0..2 {
@@ -605,9 +614,9 @@ impl Perlin {
                 for k in 0..2 {
                     let weight = Vec3::new(u - i as f64, v - j as f64, w - k as f64);
                     accum += c[i][j][k].dot(&weight)
-                    * (i as f64 * uu + (1-i) as f64 * (1.0-uu))
-                    * (j as f64 * vv + (1-j) as f64 * (1.0-vv))
-                    * (k as f64 * ww + (1-k) as f64 * (1.0-ww));
+                        * (i as f64 * uu + (1 - i) as f64 * (1.0 - uu))
+                        * (j as f64 * vv + (1 - j) as f64 * (1.0 - vv))
+                        * (k as f64 * ww + (1 - k) as f64 * (1.0 - ww));
                 }
             }
         }
@@ -615,7 +624,7 @@ impl Perlin {
     }
 
     fn perlin_generate_perm() -> Vec<usize> {
-        let mut p : Vec<usize> = Vec::new();
+        let mut p: Vec<usize> = Vec::new();
         p.resize(PERLIN_POINT_COUNT, 0);
         for i in 0..PERLIN_POINT_COUNT {
             p[i] = i;
